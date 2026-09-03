@@ -526,7 +526,9 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l2"><a class="reference internal" href="projects.html">Projects</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="howto/index.html">How-To Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="howto/choose-workflow.html">Choose a workflow for your task</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/minimal-context.html">Run gptme with minimal context</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/edit-files.html">How to Edit Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/code-review.html">How to Review Code</a></li>
@@ -537,16 +539,19 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l2"><a class="reference internal" href="howto/tts-setup.html">Set Up Text-to-Speech</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tools.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="browser.html">Browser Tool</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tui.html">TUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="providers.html">Providers</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tool-formats.html">Tool Formats</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="provider-integration.html">Provider Integration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="model-routing.html">Choosing your model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security Considerations</a></li>
@@ -564,7 +569,10 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l1"><a class="reference internal" href="mcp.html">MCP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acp.html">ACP (Agent Client Protocol)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lessons.html">Lessons</a></li>
-<li class="toctree-l1"><a class="reference internal" href="skills.html">Skills</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="skills.html">Skills</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="skills-gallery.html">Skills Gallery</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
 <ul class="nav bd-sidenav">
@@ -574,6 +582,7 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l1"><a class="reference internal" href="custom_tool.html">Custom Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hooks.html">Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plugins.html">Plugin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context-compression.html">Context Compression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="prompts.html">Prompts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="evals.html">Evals</a></li>
@@ -584,6 +593,7 @@ window.runMermaid = runMermaid;</script>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="design/hook-based-confirmations.html">Design: Hook-Based Tool Confirmations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/elicitation.html">Design: Generalized Elicitation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/ptc-tool-interface.html">Design: Programmatic Tool Calling (PTC) Interface</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">About</span></p>
 <ul class="nav bd-sidenav">
@@ -592,6 +602,7 @@ window.runMermaid = runMermaid;</script>
 <li class="toctree-l1"><a class="reference internal" href="misc/acronyms.html">What does “gptme” stand for?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="timeline.html">Timeline</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="changelog.html">Changelog</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="releases/v0.33.0.html">v0.33.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.1.html">v0.32.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.0.html">v0.32.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.31.0.html">v0.31.0</a></li>
@@ -851,6 +862,7 @@ document.write(`
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#superpowers">✨ Superpowers</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtime-portability">🔁 Runtime Portability</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#agent-brain">🧠 Agent Brain</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#external-world">🌍 External World</a></li>
 </ul>
@@ -887,13 +899,35 @@ document.write(`
     Persistent[🔒 Persistent&lt;br/&gt;Complete history&lt;br/&gt;Version controlled]
     Autonomous[🎯 Autonomous&lt;br/&gt;Long-term goals&lt;br/&gt;Proactive &amp; self-directed]
     Evolving[🌱 Self-Improving&lt;br/&gt;Gets smarter over time&lt;br/&gt;Learns from experience]
+    Portable[🔁 Portable&lt;br/&gt;Workspace-owned identity&lt;br/&gt;Multiple runtimes]
 
     %% Force left-to-right layout
-    Persistent --- Autonomous --- Evolving
+    Persistent --- Autonomous --- Evolving --- Portable
 
     classDef benefits fill:#fff8e1,stroke:#f57f17,stroke-width:3px,color:#000
-    class Persistent,Autonomous,Evolving benefits
+    class Persistent,Autonomous,Evolving,Portable benefits
     </pre></section>
+<section id="runtime-portability">
+<span id="agent-runtime-portability"></span><h3>🔁 Runtime Portability<a class="headerlink" href="#runtime-portability" title="Link to this heading">#</a></h3>
+<p><strong>Your agent is the workspace, not the harness.</strong> Identity, memory, tasks,
+lessons, journal, workflow, and audit history live in the version-controlled
+workspace. gptme is the native runtime for that workspace, but another harness
+can operate on the same durable agent state when it implements the same context
+and task-lifecycle contract.</p>
+<p>Keep four layers distinct:</p>
+<ul class="simple">
+<li><p><strong>Agent workspace</strong> — identity, memory, tasks, journal, lessons, and workflow.</p></li>
+<li><p><strong>Harness / runtime</strong> — the agent loop, tools, context loading, and permissions.</p></li>
+<li><p><strong>Model / provider</strong> — the model used for reasoning and generation.</p></li>
+<li><p><strong>Access / billing</strong> — API keys, local inference, managed services, or a
+compatible subscription login.</p></li>
+</ul>
+<p>These layers are not a full Cartesian product. Each harness supports different
+models and access methods, and merely being able to read the repository is not
+the same as shipping a reliable autonomous adapter. See the
+<a class="reference external" href="https://github.com/gptme/gptme-agent-template#one-agent-multiple-runtimes">gptme-agent-template runtime compatibility matrix</a>
+for the concrete support levels in the public template.</p>
+</section>
 <section id="agent-brain">
 <h3>🧠 Agent Brain<a class="headerlink" href="#agent-brain" title="Link to this heading">#</a></h3>
 <pre  class="mermaid">
@@ -1076,7 +1110,7 @@ gptme-agent<span class="w"> </span>stop<span class="w">                </span><s
 gptme-agent<span class="w"> </span>start<span class="w">               </span><span class="c1"># Resume scheduled runs</span>
 </pre></div>
 </div>
-<p><strong>Execution Flow:</strong></p>
+<p><strong>Execution Flow with gptme:</strong></p>
 <ol class="arabic simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">gptme</span></code> builds context from all systems</p>
 <ul class="simple">
@@ -1265,6 +1299,7 @@ The template system enables creating agents for specific domains:</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#superpowers">✨ Superpowers</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#runtime-portability">🔁 Runtime Portability</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#agent-brain">🧠 Agent Brain</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#external-world">🌍 External World</a></li>
 </ul>

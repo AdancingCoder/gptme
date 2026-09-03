@@ -48,7 +48,7 @@
     <link rel="icon" href="_static/logo.png"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Provider Integration Guide" href="provider-integration.html" />
+    <link rel="next" title="Tool Formats" href="tool-formats.html" />
     <link rel="prev" title="Providers" href="providers.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
@@ -170,7 +170,9 @@
 <li class="toctree-l2"><a class="reference internal" href="projects.html">Projects</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="howto/index.html">How-To Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="howto/choose-workflow.html">Choose a workflow for your task</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/minimal-context.html">Run gptme with minimal context</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/edit-files.html">How to Edit Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/code-review.html">How to Review Code</a></li>
@@ -181,16 +183,19 @@
 <li class="toctree-l2"><a class="reference internal" href="howto/tts-setup.html">Set Up Text-to-Speech</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tools.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="browser.html">Browser Tool</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tui.html">TUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
 <li class="toctree-l1 current active has-children"><a class="reference internal" href="providers.html">Providers</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
 <li class="toctree-l2 current active"><a class="current reference internal" href="#">Custom and Local Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tool-formats.html">Tool Formats</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Custom and Local Providers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="provider-integration.html">Provider Integration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="model-routing.html">Choosing your model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security Considerations</a></li>
@@ -208,7 +213,10 @@
 <li class="toctree-l1"><a class="reference internal" href="mcp.html">MCP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acp.html">ACP (Agent Client Protocol)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lessons.html">Lessons</a></li>
-<li class="toctree-l1"><a class="reference internal" href="skills.html">Skills</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="skills.html">Skills</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="skills-gallery.html">Skills Gallery</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
 <ul class="nav bd-sidenav">
@@ -218,6 +226,7 @@
 <li class="toctree-l1"><a class="reference internal" href="custom_tool.html">Custom Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hooks.html">Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plugins.html">Plugin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context-compression.html">Context Compression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="prompts.html">Prompts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="evals.html">Evals</a></li>
@@ -228,6 +237,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="design/hook-based-confirmations.html">Design: Hook-Based Tool Confirmations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/elicitation.html">Design: Generalized Elicitation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/ptc-tool-interface.html">Design: Programmatic Tool Calling (PTC) Interface</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">About</span></p>
 <ul class="nav bd-sidenav">
@@ -236,6 +246,7 @@
 <li class="toctree-l1"><a class="reference internal" href="misc/acronyms.html">What does “gptme” stand for?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="timeline.html">Timeline</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="changelog.html">Changelog</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="releases/v0.33.0.html">v0.33.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.1.html">v0.32.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.0.html">v0.32.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.31.0.html">v0.31.0</a></li>
@@ -495,6 +506,7 @@ document.write(`
                 <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ollama-local">Ollama (local)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lm-studio-local">LM Studio (local)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-discovery">Auto-discovery</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vllm-and-openai-compatible-servers">vLLM and OpenAI-compatible servers</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setting-a-default-model">Setting a default model</a></li>
@@ -631,6 +643,26 @@ Studio ignores the model name in requests (and echoes it back in responses).</p>
 <strong>Fix:</strong> Use a 7B+ instruction-tuned model; or try a different tool format (<code class="docutils literal notranslate"><span class="pre">gptme</span> <span class="pre">--tool-format</span> <span class="pre">xml</span></code>)</p>
 </dd>
 </dl>
+</section>
+<section id="auto-discovery">
+<h2>Auto-discovery<a class="headerlink" href="#auto-discovery" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">gptme</span> <span class="pre">providers</span> <span class="pre">list</span></code> probes well-known local OpenAI-compatible endpoints and
+reports what it finds — including candidates that are not running:</p>
+<ul class="simple">
+<li><p>Ollama: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">http://127.0.0.1:11434/v1/models</span></code></p></li>
+<li><p>LM Studio: <code class="docutils literal notranslate"><span class="pre">GET</span> <span class="pre">http://127.0.0.1:1234/v1/models</span></code></p></li>
+</ul>
+<p>Detection is an HTTP GET of the real <code class="docutils literal notranslate"><span class="pre">/v1/models</span></code> path (the OpenAI models
+list), not a port-open check and not Ollama’s native <code class="docutils literal notranslate"><span class="pre">/api/tags</span></code>. A process
+listening on the port that is not OpenAI-compatible is listed with a reason
+rather than silently skipped.</p>
+<p>Auto-discovery never writes config. Use <code class="docutils literal notranslate"><span class="pre">gptme</span> <span class="pre">providers</span> <span class="pre">add</span></code> (or a
+<code class="docutils literal notranslate"><span class="pre">[[providers]]</span></code> block) to persist a provider. Disable probes with
+<code class="docutils literal notranslate"><span class="pre">GPTME_NO_LOCAL_DISCOVERY=1</span></code> or <code class="docutils literal notranslate"><span class="pre">gptme</span> <span class="pre">providers</span> <span class="pre">list</span> <span class="pre">--no-discover</span></code>.</p>
+<div class="highlight-sh notranslate"><div class="highlight"><pre><span></span>gptme<span class="w"> </span>providers<span class="w"> </span>list
+gptme<span class="w"> </span>providers<span class="w"> </span>list<span class="w"> </span>--json
+</pre></div>
+</div>
 </section>
 <section id="vllm-and-openai-compatible-servers">
 <h2>vLLM and OpenAI-compatible servers<a class="headerlink" href="#vllm-and-openai-compatible-servers" title="Link to this heading">#</a></h2>
@@ -789,11 +821,11 @@ existing configurations.</p>
       </div>
     </a>
     <a class="right-next"
-       href="provider-integration.html"
+       href="tool-formats.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Provider Integration Guide</p>
+        <p class="prev-next-title">Tool Formats</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -815,6 +847,7 @@ existing configurations.</p>
     <ul class="visible nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ollama-local">Ollama (local)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#lm-studio-local">LM Studio (local)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-discovery">Auto-discovery</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#vllm-and-openai-compatible-servers">vLLM and OpenAI-compatible servers</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#configuration">Configuration</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#setting-a-default-model">Setting a default model</a></li>

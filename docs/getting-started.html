@@ -170,7 +170,9 @@
 <li class="toctree-l2"><a class="reference internal" href="projects.html">Projects</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="howto/index.html">How-To Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="howto/choose-workflow.html">Choose a workflow for your task</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/minimal-context.html">Run gptme with minimal context</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/edit-files.html">How to Edit Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/code-review.html">How to Review Code</a></li>
@@ -181,16 +183,19 @@
 <li class="toctree-l2"><a class="reference internal" href="howto/tts-setup.html">Set Up Text-to-Speech</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tools.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="browser.html">Browser Tool</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tui.html">TUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="providers.html">Providers</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tool-formats.html">Tool Formats</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="provider-integration.html">Provider Integration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="model-routing.html">Choosing your model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security Considerations</a></li>
@@ -208,7 +213,10 @@
 <li class="toctree-l1"><a class="reference internal" href="mcp.html">MCP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acp.html">ACP (Agent Client Protocol)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lessons.html">Lessons</a></li>
-<li class="toctree-l1"><a class="reference internal" href="skills.html">Skills</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="skills.html">Skills</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="skills-gallery.html">Skills Gallery</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
 <ul class="nav bd-sidenav">
@@ -218,6 +226,7 @@
 <li class="toctree-l1"><a class="reference internal" href="custom_tool.html">Custom Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hooks.html">Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plugins.html">Plugin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context-compression.html">Context Compression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="prompts.html">Prompts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="evals.html">Evals</a></li>
@@ -228,6 +237,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="design/hook-based-confirmations.html">Design: Hook-Based Tool Confirmations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/elicitation.html">Design: Generalized Elicitation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/ptc-tool-interface.html">Design: Programmatic Tool Calling (PTC) Interface</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">About</span></p>
 <ul class="nav bd-sidenav">
@@ -236,6 +246,7 @@
 <li class="toctree-l1"><a class="reference internal" href="misc/acronyms.html">What does “gptme” stand for?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="timeline.html">Timeline</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="changelog.html">Changelog</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="releases/v0.33.0.html">v0.33.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.1.html">v0.32.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.0.html">v0.32.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.31.0.html">v0.31.0</a></li>
@@ -497,6 +508,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-examples">Quick Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#local-models-no-api-key-required">Local Models (No API Key Required)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#free-cloud-providers-no-credit-card-required">Free Cloud Providers (No Credit Card Required)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#support">Support</a></li>
 </ul>
@@ -579,11 +591,14 @@ gptme<span class="w"> </span>-r
 </div>
 </section>
 <section id="local-models-no-api-key-required">
-<h2>Local Models (No API Key Required)<a class="headerlink" href="#local-models-no-api-key-required" title="Link to this heading">#</a></h2>
+<span id="local-models"></span><h2>Local Models (No API Key Required)<a class="headerlink" href="#local-models-no-api-key-required" title="Link to this heading">#</a></h2>
 <p>To run gptme without an API key, use a local model via <a class="reference external" href="https://ollama.com">Ollama</a>:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install Ollama (see https://ollama.com), then pull a model</span>
 ollama<span class="w"> </span>pull<span class="w"> </span>llama3.2:1b
 ollama<span class="w"> </span>serve<span class="w">  </span><span class="c1"># run in background or separate terminal</span>
+
+<span class="c1"># Check that gptme can see the local server (probes /v1/models)</span>
+gptme<span class="w"> </span>providers<span class="w"> </span>list
 
 <span class="c1"># Use with gptme (OPENAI_BASE_URL is required by the local provider)</span>
 <span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_BASE_URL</span><span class="o">=</span><span class="s2">&quot;http://127.0.0.1:11434/v1&quot;</span>
@@ -607,9 +622,62 @@ same model for both chat and summaries.</p>
 <p>See <a class="reference internal" href="providers.html"><span class="doc">Providers</span></a> for Groq and all other built-in provider options, or <a class="reference internal" href="providers-custom.html"><span class="doc">Custom and Local Providers</span></a>
 for Ollama, vLLM, and custom server setup.</p>
 </section>
+<section id="free-cloud-providers-no-credit-card-required">
+<h2>Free Cloud Providers (No Credit Card Required)<a class="headerlink" href="#free-cloud-providers-no-credit-card-required" title="Link to this heading">#</a></h2>
+<p>Several cloud providers offer free tiers that work with gptme out of the box.</p>
+<p><strong>OpenRouter</strong> (recommended: one browser sign-in, no credit card)</p>
+<p>OpenRouter aggregates free model tiers behind one API key. The <code class="docutils literal notranslate"><span class="pre">:free</span></code> catalog
+<strong>rotates</strong> — last month’s model id is often gone. Prefer the free router, and
+pin a specific <code class="docutils literal notranslate"><span class="pre">:free</span></code> model only after you have confirmed it is still listed.</p>
+<p>On a fresh install, start <code class="docutils literal notranslate"><span class="pre">gptme</span></code> and choose <strong>OpenRouter</strong> in the startup
+provider setup. gptme opens the browser OAuth flow before entering the chat.
+On an already configured installation, you can instead run
+<code class="docutils literal notranslate"><span class="pre">/account</span> <span class="pre">setup</span> <span class="pre">openrouter</span></code> inside a session.</p>
+<p>Then use the default free router:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># OpenRouter model id is openrouter/free</span>
+gptme<span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="w"> </span>-m<span class="w"> </span>openrouter/openrouter/free
+
+<span class="c1"># Pin a currently listed free model (catalog rotates)</span>
+gptme<span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="w"> </span>-m<span class="w"> </span>openrouter/cohere/north-mini-code:free
+</pre></div>
+</div>
+<p>The doubled <code class="docutils literal notranslate"><span class="pre">openrouter/openrouter/free</span></code> is intentional: gptme’s
+<code class="docutils literal notranslate"><span class="pre">&lt;provider&gt;/&lt;model&gt;</span></code> split plus OpenRouter’s own <code class="docutils literal notranslate"><span class="pre">openrouter/free</span></code> model id.
+<code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">openrouter/free</span></code> sends <code class="docutils literal notranslate"><span class="pre">model=free</span></code> and 404s.</p>
+<p>Verified 2026-08-28 (chat + gptme <code class="docutils literal notranslate"><span class="pre">shell</span></code> tool, shared free pool):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">openrouter/openrouter/free</span></code> — 200k ctx, tools work. Recommended default.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">openrouter/cohere/north-mini-code:free</span></code> — 256k ctx, tools work.</p></li>
+</ul>
+<p>Shared-pool <code class="docutils literal notranslate"><span class="pre">:free</span></code> endpoints 429 often (Gemma 4 and GLM-5.2 did during the
+same probe). Retry, pick another listed model, or add your own provider key at
+<a class="reference external" href="https://openrouter.ai/settings/integrations">https://openrouter.ai/settings/integrations</a>. Omitting <code class="docutils literal notranslate"><span class="pre">:free</span></code> routes to paid
+inference. Current catalog: <a class="reference external" href="https://openrouter.ai/models?max_price=0">https://openrouter.ai/models?max_price=0</a></p>
+<p><strong>Google Gemini</strong> (generous free quota, 1 M token context)</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get a free API key at https://aistudio.google.com/apikey (no credit card)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">GEMINI_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-key&quot;</span>
+gptme<span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="w"> </span>-m<span class="w"> </span>gemini/gemini-2.5-flash
+</pre></div>
+</div>
+<p><strong>Groq</strong> (fast inference, free tier)</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get a free API key at https://console.groq.com (no credit card)</span>
+<span class="nb">export</span><span class="w"> </span><span class="nv">GROQ_API_KEY</span><span class="o">=</span><span class="s2">&quot;your-key&quot;</span>
+gptme<span class="w"> </span><span class="s2">&quot;hello&quot;</span><span class="w"> </span>-m<span class="w"> </span>groq/llama-3.3-70b-versatile
+</pre></div>
+</div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Free cloud tiers give better results than local small models for most tasks, while still
+requiring zero spend. OpenRouter’s <code class="docutils literal notranslate"><span class="pre">/account</span> <span class="pre">setup</span></code> is the fastest path — one browser
+sign-in configures everything.</p>
+<p>For truly private workflows, prefer <a class="reference internal" href="#local-models"><span class="std std-ref">local models</span></a> or a self-hosted
+server. Cloud providers receive your prompts on their infrastructure.</p>
+</div>
+</section>
 <section id="next-steps">
 <h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">#</a></h2>
 <ul class="simple">
+<li><p>Match your task to a safe execution surface with <a class="reference internal" href="howto/choose-workflow.html"><span class="doc">Choose a workflow for your task</span></a></p></li>
 <li><p>Read the <a class="reference internal" href="usage.html"><span class="doc">Usage</span></a> guide</p></li>
 <li><p>Try the <a class="reference internal" href="examples.html"><span class="doc">Examples</span></a></p></li>
 <li><p>Learn about available <a class="reference internal" href="tools.html"><span class="doc">Tools</span></a></p></li>
@@ -672,6 +740,7 @@ for Ollama, vLLM, and custom server setup.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#usage">Usage</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-examples">Quick Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#local-models-no-api-key-required">Local Models (No API Key Required)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#free-cloud-providers-no-credit-card-required">Free Cloud Providers (No Credit Card Required)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#next-steps">Next Steps</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#support">Support</a></li>
 </ul>

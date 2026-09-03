@@ -62,7 +62,7 @@ Here is an example:
     #OPENAI_BASE_URL = "http://localhost:11434/v1"
 
     # Uncomment to change tool configuration
-    #TOOL_FORMAT = "markdown" # Select the tool formal. One of `markdown`, `xml`, `tool`
+    #TOOL_FORMAT = "markdown" # Select the tool format. One of `markdown`, `xml`, `tool` (see docs: Tool Formats)
     #TOOL_ALLOWLIST = "save,append,patch,ipython,shell,browser"  # Comma separated list of allowed tools
     #TOOL_MODULES = "gptme.tools,custom.tools" # List of python comma separated python module path
 
@@ -345,6 +345,9 @@ Besides the configuration files, gptme supports several environment variables to
 - ``GPTME_CHECK`` - Enable ``pre-commit`` checks (default: true if ``.pre-commit-config.yaml`` present, see :ref:`pre-commit`)
 - ``GPTME_CHAT_HISTORY`` - Enable cross-conversation context (default: false)
 - ``GPTME_COSTS`` - Enable cost reporting for API calls (default: false)
+- ``GPTME_SESSION_BUDGET_USD`` - Optional per-session cost budget in USD. When set, gptme warns once the current session crosses ``GPTME_BUDGET_WARN_PCT`` of the budget.
+- ``GPTME_SESSION_BUDGET_TOKENS`` - Optional per-session token budget. Counts input, output, cache-read, and cache-creation tokens.
+- ``GPTME_BUDGET_WARN_PCT`` - Percentage of the configured session budget that triggers the warning (default: 80).
 - ``GPTME_FRESH`` - Enable fresh context mode (default: false)
 - ``GPTME_BREAK_ON_TOOLUSE`` - Interrupt generation when tool use occurs in stream. Default is model-dependent: ``false`` for capable models that support parallel tool calls (e.g. claude-sonnet-4-6, gpt-4o), ``true`` for others. Set to ``0`` to force parallel tool calls, ``1`` to force single tool call per response (equivalent to ``--multi-tool`` flag).
 - ``GPTME_PATCH_RECOVERY`` - Return file content in error for non-matching patches (default: false)
@@ -353,6 +356,7 @@ Besides the configuration files, gptme supports several environment variables to
 .. rubric:: API Configuration
 
 - ``LLM_API_TIMEOUT`` - Set the timeout in seconds for LLM API requests (default: 600). Must be a valid numeric string (e.g., "600", "1800"). Useful for local LLMs that may take longer to respond.
+- ``GPTME_LLM_MAX_RETRIES`` - Number of attempts (including the first) for a failing LLM request (default: 11). Retries use exponential backoff capped at 60s per wait, giving a ~5 minute window so a brief upstream rate-limit or outage does not end a long session. Provider SDK-level retries are disabled so this is the only retry loop.
 - ``GPTME_ANTHROPIC_FAST_MODE`` - Enable Anthropic fast mode for the Anthropic provider (default: false). When enabled, requests set ``speed: "fast"`` for up to ~2.5x higher output tokens/sec at premium pricing — a research preview available on Claude Opus 4.8+. Requires an org with fast-mode access; otherwise the API returns an error. Off by default, so it never affects standard usage. Useful for latency-sensitive callers (e.g. gptme-voice).
 
 .. rubric:: Browser Configuration
@@ -373,7 +377,7 @@ The variable name is derived from the parameter name in uppercase.
 Common examples:
 
 - ``GPTME_MODEL`` - Set the model (equivalent to ``--model``)
-- ``GPTME_TOOL_FORMAT`` - Set the tool format (equivalent to ``--tool-format``)
+- ``GPTME_TOOL_FORMAT`` - Set the tool format (equivalent to ``--tool-format``), see :doc:`tool-formats`
 - ``GPTME_WORKSPACE`` - Set the workspace (equivalent to ``--workspace``)
 - ``GPTME_TOOL_ALLOWLIST`` - Set allowed tools (equivalent to ``--tools``)
 

@@ -170,7 +170,9 @@
 <li class="toctree-l2"><a class="reference internal" href="projects.html">Projects</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="howto/index.html">How-To Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="howto/choose-workflow.html">Choose a workflow for your task</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/minimal-context.html">Run gptme with minimal context</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/edit-files.html">How to Edit Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/code-review.html">How to Review Code</a></li>
@@ -181,16 +183,19 @@
 <li class="toctree-l2"><a class="reference internal" href="howto/tts-setup.html">Set Up Text-to-Speech</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tools.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="browser.html">Browser Tool</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">CLI Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tui.html">TUI</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">Configuration</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="providers.html">Providers</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tool-formats.html">Tool Formats</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="provider-integration.html">Provider Integration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="model-routing.html">Choosing your model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security Considerations</a></li>
@@ -208,7 +213,10 @@
 <li class="toctree-l1"><a class="reference internal" href="mcp.html">MCP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acp.html">ACP (Agent Client Protocol)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lessons.html">Lessons</a></li>
-<li class="toctree-l1"><a class="reference internal" href="skills.html">Skills</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="skills.html">Skills</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="skills-gallery.html">Skills Gallery</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
 <ul class="nav bd-sidenav">
@@ -218,6 +226,7 @@
 <li class="toctree-l1"><a class="reference internal" href="custom_tool.html">Custom Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hooks.html">Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plugins.html">Plugin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context-compression.html">Context Compression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="prompts.html">Prompts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="evals.html">Evals</a></li>
@@ -228,6 +237,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="design/hook-based-confirmations.html">Design: Hook-Based Tool Confirmations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/elicitation.html">Design: Generalized Elicitation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/ptc-tool-interface.html">Design: Programmatic Tool Calling (PTC) Interface</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">About</span></p>
 <ul class="nav bd-sidenav">
@@ -236,6 +246,7 @@
 <li class="toctree-l1"><a class="reference internal" href="misc/acronyms.html">What does “gptme” stand for?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="timeline.html">Timeline</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="changelog.html">Changelog</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="releases/v0.33.0.html">v0.33.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.1.html">v0.32.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.0.html">v0.32.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.31.0.html">v0.31.0</a></li>
@@ -542,6 +553,7 @@ document.write(`
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers">providers</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers-add">add</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers-list">list</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers-test">test</a></li>
 </ul>
@@ -595,6 +607,7 @@ PROMPTS can be chained with the ‘-’ separator.</p>
 <div class="line">gptme “fix TODOs” main.py                  Include file or URL in context</div>
 <div class="line">gptme “review” github.com/org/repo/pull/1  Include a GitHub PR in context</div>
 <div class="line">gptme –tools none “what is 2+2”           No tools, just chat</div>
+<div class="line">gptme -t read-only “summarize this repo”   Read files only; no writes or execution</div>
 <div class="line">gptme -t patch,save “fix typo” main.py     Only specific tools (comma-separated)</div>
 <div class="line">gptme -t +subagent “plan a refactor”       Default tools + subagent</div>
 <div class="line">gptme -t=-browser “summarize code”         Default tools minus browser</div>
@@ -762,7 +775,13 @@ PROMPTS can be chained with the ‘-’ separator.</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-gptme-version">
 <span class="sig-name descname"><span class="pre">--version</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-gptme-version" title="Link to this definition">#</a></dt>
-<dd><p>Show version and configuration information</p>
+<dd><p>Show version. With -v/–verbose, show full configuration info.</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-gptme-version-json">
+<span class="sig-name descname"><span class="pre">--version-json</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-gptme-version-json" title="Link to this definition">#</a></dt>
+<dd><p>Show version info as JSON (machine-readable, for scripting).</p>
 </dd></dl>
 
 <dl class="std option">
@@ -924,7 +943,7 @@ PROMPTS can be chained with the ‘-’ separator.</p>
 <dl class="std option">
 <dt class="sig sig-object std" id="cmdoption-gptme-server-serve-allowed-hosts">
 <span class="sig-name descname"><span class="pre">--allowed-hosts</span></span><span class="sig-prename descclassname"> <span class="pre">&lt;allowed_hosts&gt;</span></span><a class="headerlink" href="#cmdoption-gptme-server-serve-allowed-hosts" title="Link to this definition">#</a></dt>
-<dd><p>Comma-separated hostnames to accept in the Host header, in addition to the built-in localhost/127.0.0.1/[::1] allow-list. Only relevant for unauthenticated loopback binds, where the server validates the Host header to block DNS-rebinding attacks. Set this if you proxy the local server behind a hostname (e.g. ‘gptme.local’). Can also be set via the GPTME_SERVER_ALLOWED_HOSTS environment variable.</p>
+<dd><p>Comma-separated hostnames to accept in the Host header, in addition to the built-in localhost/127.0.0.1/[::1] allow-list. Relevant when bearer auth is explicitly disabled with GPTME_DISABLE_AUTH. Can also be set via the GPTME_SERVER_ALLOWED_HOSTS environment variable.</p>
 </dd></dl>
 
 <dl class="std option">
@@ -1684,13 +1703,43 @@ using the same logic as the main gptme tool.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>gptme-util<span class="w"> </span>providers<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span><span class="w"> </span>COMMAND<span class="w"> </span><span class="o">[</span>ARGS<span class="o">]</span>...
 </pre></div>
 </div>
+<section id="gptme-util-providers-add">
+<h4>add<a class="headerlink" href="#gptme-util-providers-add" title="Link to this heading">#</a></h4>
+<p>Interactively add a custom OpenAI-compatible provider.</p>
+<p>Prompts for provider name, base URL, API key, and default model, then
+writes the configuration to gptme.toml.</p>
+<p>Example providers: Ollama (<a class="reference external" href="http://localhost:11434/v1">http://localhost:11434/v1</a>), LM Studio
+(<a class="reference external" href="http://localhost:1234/v1">http://localhost:1234/v1</a>), vLLM, or any OpenAI-compatible relay.</p>
+<p class="rubric">Usage</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>gptme-util<span class="w"> </span>providers<span class="w"> </span>add<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
+</pre></div>
+</div>
+</section>
 <section id="gptme-util-providers-list">
 <h4>list<a class="headerlink" href="#gptme-util-providers-list" title="Link to this heading">#</a></h4>
-<p>List configured custom OpenAI-compatible providers.</p>
+<p>List configured and auto-discovered local OpenAI-compatible providers.</p>
+<p>Configured <code class="docutils literal notranslate"><span class="pre">[[providers]]</span></code> entries are listed first. Then gptme probes
+Ollama (<code class="docutils literal notranslate"><span class="pre">http://127.0.0.1:11434/v1/models</span></code>) and LM Studio
+(<code class="docutils literal notranslate"><span class="pre">http://127.0.0.1:1234/v1/models</span></code>) and reports each candidate — live
+servers and the reason a probe did not count as available. Discovery never
+writes config; use <code class="docutils literal notranslate"><span class="pre">gptme</span> <span class="pre">providers</span> <span class="pre">add</span></code> to persist a provider.</p>
 <p class="rubric">Usage</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>gptme-util<span class="w"> </span>providers<span class="w"> </span>list<span class="w"> </span><span class="o">[</span>OPTIONS<span class="o">]</span>
 </pre></div>
 </div>
+<p class="rubric">Options</p>
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-gptme-util-providers-list-discover">
+<span id="cmdoption-gptme-util-providers-list-no-discover"></span><span class="sig-name descname"><span class="pre">--discover</span></span><span class="sig-prename descclassname"></span><span class="sig-prename descclassname"><span class="pre">,</span> </span><span class="sig-name descname"><span class="pre">--no-discover</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-gptme-util-providers-list-discover" title="Link to this definition">#</a></dt>
+<dd><p>Probe well-known local OpenAI-compatible endpoints (Ollama :11434, LM Studio :1234).</p>
+</dd></dl>
+
+<dl class="std option">
+<dt class="sig sig-object std" id="cmdoption-gptme-util-providers-list-json">
+<span class="sig-name descname"><span class="pre">--json</span></span><span class="sig-prename descclassname"></span><a class="headerlink" href="#cmdoption-gptme-util-providers-list-json" title="Link to this definition">#</a></dt>
+<dd><p>Output as JSON.</p>
+</dd></dl>
+
 </section>
 <section id="gptme-util-providers-test">
 <h4>test<a class="headerlink" href="#gptme-util-providers-test" title="Link to this heading">#</a></h4>
@@ -1956,6 +2005,7 @@ Use –all to include unavailable tools as well.</p>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers">providers</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers-add">add</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers-list">list</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#gptme-util-providers-test">test</a></li>
 </ul>

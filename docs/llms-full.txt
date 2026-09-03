@@ -29,6 +29,7 @@ See the `README <https://github.com/gptme/gptme/blob/master/README.md>`_ file fo
    system-dependencies
    usage
    examples
+   cookbook
    howto/index
    tools
    commands
@@ -36,7 +37,6 @@ See the `README <https://github.com/gptme/gptme/blob/master/README.md>`_ file fo
    tui
    config
    providers
-   providers-custom
    provider-integration
    model-routing
    security
@@ -65,6 +65,7 @@ See the `README <https://github.com/gptme/gptme/blob/master/README.md>`_ file fo
    custom_tool
    hooks
    plugins
+   context-compression
    prompts
    api
    evals
@@ -77,9 +78,10 @@ See the `README <https://github.com/gptme/gptme/blob/master/README.md>`_ file fo
 
    design/hook-based-confirmations
    design/elicitation
+   design/ptc-tool-interface
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: About
 
    alternatives
@@ -191,6 +193,8 @@ Here are some compelling examples to get you started:
     # Resume conversations
     gptme -r
 
+.. _local-models:
+
 Local Models (No API Key Required)
 -----------------------------------
 
@@ -201,6 +205,9 @@ To run gptme without an API key, use a local model via `Ollama <https://ollama.c
     # Install Ollama (see https://ollama.com), then pull a model
     ollama pull llama3.2:1b
     ollama serve  # run in background or separate terminal
+
+    # Check that gptme can see the local server (probes /v1/models)
+    gptme providers list
 
     # Use with gptme (OPENAI_BASE_URL is required by the local provider)
     export OPENAI_BASE_URL="http://127.0.0.1:11434/v1"
@@ -226,9 +233,75 @@ For better results on coding tasks, use a larger model:
 See :doc:`providers` for Groq and all other built-in provider options, or :doc:`providers-custom`
 for Ollama, vLLM, and custom server setup.
 
+Free Cloud Providers (No Credit Card Required)
+----------------------------------------------
+
+Several cloud providers offer free tiers that work with gptme out of the box.
+
+**OpenRouter** (recommended: one browser sign-in, no credit card)
+
+OpenRouter aggregates free model tiers behind one API key. The ``:free`` catalog
+**rotates** — last month's model id is often gone. Prefer the free router, and
+pin a specific ``:free`` model only after you have confirmed it is still listed.
+
+On a fresh install, start ``gptme`` and choose **OpenRouter** in the startup
+provider setup. gptme opens the browser OAuth flow before entering the chat.
+On an already configured installation, you can instead run
+``/account setup openrouter`` inside a session.
+
+Then use the default free router:
+
+.. code-block:: bash
+
+    # OpenRouter model id is openrouter/free
+    gptme "hello" -m openrouter/openrouter/free
+
+    # Pin a currently listed free model (catalog rotates)
+    gptme "hello" -m openrouter/cohere/north-mini-code:free
+
+The doubled ``openrouter/openrouter/free`` is intentional: gptme's
+``<provider>/<model>`` split plus OpenRouter's own ``openrouter/free`` model id.
+``-m openrouter/free`` sends ``model=free`` and 404s.
+
+Verified 2026-08-28 (chat + gptme ``shell`` tool, shared free pool):
+
+- ``openrouter/openrouter/free`` — 200k ctx, tools work. Recommended default.
+- ``openrouter/cohere/north-mini-code:free`` — 256k ctx, tools work.
+
+Shared-pool ``:free`` endpoints 429 often (Gemma 4 and GLM-5.2 did during the
+same probe). Retry, pick another listed model, or add your own provider key at
+https://openrouter.ai/settings/integrations. Omitting ``:free`` routes to paid
+inference. Current catalog: https://openrouter.ai/models?max_price=0
+
+**Google Gemini** (generous free quota, 1 M token context)
+
+.. code-block:: bash
+
+    # Get a free API key at https://aistudio.google.com/apikey (no credit card)
+    export GEMINI_API_KEY="your-key"
+    gptme "hello" -m gemini/gemini-2.5-flash
+
+**Groq** (fast inference, free tier)
+
+.. code-block:: bash
+
+    # Get a free API key at https://console.groq.com (no credit card)
+    export GROQ_API_KEY="your-key"
+    gptme "hello" -m groq/llama-3.3-70b-versatile
+
+.. tip::
+
+   Free cloud tiers give better results than local small models for most tasks, while still
+   requiring zero spend. OpenRouter's ``/account setup`` is the fastest path — one browser
+   sign-in configures everything.
+
+   For truly private workflows, prefer :ref:`local models <local-models>` or a self-hosted
+   server. Cloud providers receive your prompts on their infrastructure.
+
 Next Steps
 ----------
 
+- Match your task to a safe execution surface with :doc:`howto/choose-workflow`
 - Read the :doc:`usage` guide
 - Try the :doc:`examples`
 - Learn about available :doc:`tools`
@@ -417,13 +490,82 @@ Common commands:
 - ``/tokens`` - Show token usage and costs
 - ``/exit`` - Exit the program
 
+.. _usage-conversations:
+
+Managing Conversations
+----------------------
+
+Every gptme interaction is part of a **conversation** — a named history of
+messages persisted on disk. Conversations can be resumed, searched, forked,
+and renamed.
+
+For term definitions (conversation, branch, fork, analytics session), see the :doc:`glossary`.
+
+**Start or resume a named conversation**
+
+Give a conversation an explicit name so you can return to it later:
+
+.. code-block:: bash
+
+    # Start a new named conversation
+    gptme --name my-refactor "let's refactor the auth module"
+
+    # Resume that same conversation in a future session
+    gptme --name my-refactor
+
+    # Resume the most recently modified conversation (any name)
+    gptme -r
+
+Without ``--name``, gptme assigns a random name (e.g. ``hopping-blue-robot``).
+
+**List and search conversations**
+
+.. code-block:: bash
+
+    # List the 20 most recent conversations
+    gptme chats list
+
+    # Show full metadata (model, cost, token counts)
+    gptme chats list --metadata
+
+    # Search conversation content
+    gptme chats search "auth module refactor"
+
+    # Machine-readable JSON output
+    gptme chats list --json
+
+**Fork a conversation to explore an alternate approach**
+
+Forking creates a new independent conversation from messages up to turn N.
+The original conversation is unchanged.
+
+.. code-block:: bash
+
+    # Fork after the third user+assistant exchange
+    gptme-util chats fork my-refactor --at-turn 3
+
+    # Fork with a custom name for the new conversation
+    gptme-util chats fork my-refactor --at-turn 3 --name my-refactor-v2
+
+    # Then resume the fork normally
+    gptme --name my-refactor-v2
+
+Within a running conversation, ``/fork my-experiment`` achieves the same result
+at the current turn (see :doc:`commands`).
+
+.. note::
+
+   ``/fork`` and ``gptme-util chats fork`` both create a **new top-level conversation**,
+   not a branch inside the current one. For workspace rollback before risky changes,
+   use ``/checkpoint`` (committed state) or ``/snapshot`` (any state) instead.
+
 Interfaces
 ----------
 
 Besides the CLI, gptme can be used through:
 
 - :ref:`server:gptme-webui` - A web-based interface
-- A `desktop app <https://github.com/gptme/gptme-tauri>`_ (WIP)
+- A `desktop app <https://github.com/gptme/gptme-tauri>`_ for Linux, macOS, and Windows (`download <https://github.com/gptme/gptme/releases/latest>`_)
 - :doc:`bot` - GitHub bot integration
 
 For more detailed information about specific features, check out:
@@ -1332,6 +1474,103 @@ For tighter integration, use the gptme Python API directly:
 
 See the :doc:`api` reference for the full Python interface.
 
+Review-Gated Autonomous Workflows
+----------------------------------
+
+Interactive confirmation prompts are the natural safety boundary for interactive
+sessions, but they break down in autonomous use: ``-n``/``--non-interactive``
+skips all prompts, and many tools (browser, shell) don't route every operation
+through a confirmation hook anyway.
+
+The pattern that works in practice for code and other version-controlled
+artifacts is **review-gated delivery**: let gptme work autonomously in an
+isolated workspace, but gate delivery on a deterministic review step — inspect
+the complete staged diff, push a branch, open a PR, let CI run, get a human to
+review, then merge. The PR diff is the evidence; the review is the delivery
+gate.
+
+A PR cannot contain side effects outside the checkout. Scope the task to the
+worktree and do not give the session credentials or tools that can send,
+publish, deploy, spend, or mutate external systems. For stronger isolation, run
+gptme in a VM or container with only the repository mounted and use a dedicated
+GitHub account or fine-grained token that can push feature branches but cannot
+merge or write to the default branch.
+
+This is the pattern used by gptme agents in production (see :doc:`agents`).
+
+Workflow
+~~~~~~~~~
+
+.. code-block:: bash
+
+   # 1. Create an isolated workspace so changes are contained
+   git worktree add -b feat/my-task /tmp/my-task origin/master
+   cd /tmp/my-task
+
+   # 2. Let gptme work autonomously — no confirmations needed
+   gptme -n \
+     "Read the issue at https://github.com/myorg/myrepo/issues/42" \
+     - "Implement the requested feature" \
+     - "Run the tests and fix any failures" \
+     - "Summarize what you changed"
+
+   # 3. Review every change, including newly created files
+   git status --short
+   git diff origin/master
+
+   # Stage only the files you accepted
+   git add path/to/changed-file path/to/new-file
+   git diff --cached origin/master
+
+   # 4. Commit exactly what you reviewed
+   git commit -m "feat: implement issue #42"
+
+   # 5. Push to a branch (never directly to master)
+   git push origin feat/my-task
+
+   # 6. Open a PR — CI runs, human reviews, then merges
+   gh pr create --title "feat: implement issue #42" --body "Closes #42"
+
+.. note::
+
+   The PR review step is where you catch problems in the committed artifact:
+   the diff shows exactly what changed, CI validates correctness, and you
+   decide whether to merge. It does not review external side effects, so those
+   must be prevented through task scoping, tool restrictions, credentials, and
+   environment isolation.
+
+Compared to Interactive Mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
++-----------------------------+-----------------------------+-----------------------------+
+| Aspect                      | Interactive (with prompts)  | Review-gated (autonomous)   |
++=============================+=============================+=============================+
+| Safety boundary             | Per-operation confirmation  | PR review before merge      |
++-----------------------------+-----------------------------+-----------------------------+
+| Works in ``-n`` mode        | No (prompts skipped)        | Yes                         |
++-----------------------------+-----------------------------+-----------------------------+
+| Coverage                    | Supported operations        | Committed artifact only     |
++-----------------------------+-----------------------------+-----------------------------+
+| CI integration              | Manual                      | Automatic on PR open        |
++-----------------------------+-----------------------------+-----------------------------+
+| Audit trail                 | Session log                 | Git history + PR thread     |
++-----------------------------+-----------------------------+-----------------------------+
+
+When to use each:
+
+- **Interactive mode with confirmations**: exploratory tasks where you want to
+  approve each step; actions that can't be reversed (deleting data, sending
+  emails, deploying to production).
+
+- **Review-gated autonomous mode**: code changes, doc updates, or other work
+  where all intended effects are contained in the committed artifact. Keep
+  research local unless its browser access is constrained to reading; external
+  actions still need a separate boundary before they occur.
+
+For a task-oriented introduction to these choices, including copy-paste
+starting points and local-versus-remote guidance, see
+:doc:`howto/choose-workflow`.
+
 Best Practices
 --------------
 
@@ -1436,6 +1675,435 @@ Standard Badge (for projects built using gptme):
 Use the standard badge for projects created with gptme's assistance, and the "powered by" variant for tools or services that run on gptme.
 
 
+Cookbook
+========
+
+A collection of patterns for common gptme workflows. Each pattern shows a
+concrete problem, the idiomatic solution, and a runnable example.
+
+.. contents::
+   :local:
+   :depth: 2
+
+Tool Use Basics
+---------------
+
+**Difficulty**: Beginner | **Category**: Tool Use
+
+**Problem**
+
+New gptme users often treat it as a chatbot. The real power is that gptme can
+*act* — read and write files, run commands, and inspect output — all in one
+conversational session without leaving the terminal.
+
+**Solution**
+
+gptme ships with built-in tools that are always available:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Tool
+     - What it does
+   * - ``shell``
+     - Run any shell command and capture stdout/stderr
+   * - ``save`` / ``patch``
+     - Write or edit files
+   * - ``ipython``
+     - Execute Python code in a persistent interpreter
+   * - ``read``
+     - Read file contents into context
+   * - ``browser``
+     - Fetch a URL (if enabled)
+
+The agent orchestrates these tools automatically based on your request. You
+don't need to invoke them explicitly.
+
+**Example**
+
+Start a session and ask a compound question that requires multiple tools:
+
+.. code-block:: bash
+
+    gptme "Read README.md, list the project's dependencies from pyproject.toml, and tell me if any are pinned to an old major version"
+
+gptme will read both files, reason about version ranges, and reply with its
+findings.
+
+For interactive iteration, start a session and keep chatting:
+
+.. code-block:: bash
+
+    gptme  # opens an interactive session
+    # > Read the failing tests and fix them
+    # > Now run the test suite and show me the output
+    # > Write a summary of what you changed to CHANGES.md
+
+**Notes**
+
+- Tools run in your local environment with your permissions. Keep sessions
+  scoped to the project directory.
+
+- Use ``gptme tools list`` to see which tools are available and which are
+  enabled by default.
+
+- Add ``--no-confirm`` to skip per-tool confirmation prompts in trusted sessions.
+
+----
+
+Parallel Research Pipeline
+--------------------------
+
+**Difficulty**: Intermediate | **Category**: Multi-Agent
+
+**Problem**
+
+Deep research takes time when done sequentially. If you need to compare five
+frameworks or investigate three bug hypotheses, doing them one-by-one wastes
+wall-clock time and burns context on already-answered sub-questions.
+
+**Solution**
+
+gptme supports spawning subagents via the ``subagent`` tool. Each subagent gets
+a clean context and runs its task independently. The coordinator waits for all
+subagents to finish, then synthesizes the results.
+
+This pattern works well for:
+
+- Comparing N alternatives simultaneously
+- Running independent research branches
+- Executing the same task against multiple inputs
+
+**Example**
+
+Create a coordinator prompt file and run it:
+
+.. code-block:: bash
+
+    cat > research-prompt.md << 'EOF'
+    Research the following three Python HTTP client libraries in parallel:
+    1. httpx
+    2. aiohttp
+    3. requests
+
+    For each, find: latest version, async support, connection pooling behavior, and
+    known issues with timeouts. Then write a comparison table to comparison.md and
+    recommend one for a high-concurrency microservice.
+    EOF
+
+    gptme --tools +subagent "$(cat research-prompt.md)"
+
+Or invoke multi-agent mode directly in an interactive session:
+
+.. code-block:: bash
+
+    gptme
+    # > Spawn three subagents: one researches httpx, one aiohttp, one requests.
+    # > Each should write its findings to a temp file named after the library.
+    # > When all are done, synthesize the findings into comparison.md.
+
+The coordinator agent will spawn three subagents with separate contexts, each
+researching one library. Results are written to shared files; the coordinator
+reads them and writes the synthesis.
+
+**Notes**
+
+- Subagents share your filesystem but not context. Use files as the
+  communication channel between coordinator and workers.
+
+- For independent tasks, the total wall-clock time is roughly
+  ``max(subtask times)`` rather than ``sum(subtask times)``.
+
+- Keep each subagent's prompt self-contained — it won't see the coordinator's
+  conversation history.
+
+----
+
+Persistent Context with Skills
+-------------------------------
+
+**Difficulty**: Intermediate | **Category**: Context Management
+
+**Problem**
+
+Every new gptme session starts blank. If your project has conventions (a
+specific naming scheme, a non-obvious architecture decision, a required workflow
+before running tests), you end up pasting the same explanation repeatedly or
+getting wrong first drafts because the agent lacked context.
+
+**Solution**
+
+A *skill* is a plain markdown document (``SKILL.md``) that gptme injects into
+the session context automatically when its name is requested. Skills are placed
+in named subdirectories under ``skills/`` (or ``~/.config/gptme/skills/`` for
+user-global skills).
+
+This means you write the explanation **once**, commit it, and gptme makes it
+available on demand — no copy-pasting, no per-session setup.
+
+**Example**
+
+Create a skill for your project's database migration convention:
+
+.. code-block:: bash
+
+    mkdir -p skills/db-migration
+    cat > skills/db-migration/SKILL.md << 'EOF'
+    ---
+    name: db-migration
+    description: Django migration conventions and pre-migration checklist
+    ---
+
+    # Migration Workflow
+
+    ## Before creating a migration
+
+    1. Run `make lint` — schema changes that fail lint cause corrupt migrations.
+    2. Squash pending migrations if there are more than 10.
+    3. Never create a migration on an unmerged feature branch.
+
+    ## Creating a migration
+
+    ```bash
+    python manage.py makemigrations --name describe_the_change
+    ```
+
+    ## Reverting a migration
+
+    ```bash
+    python manage.py migrate myapp 0042  # the migration before yours
+    ```
+    EOF
+
+gptme automatically discovers skills in the ``skills/`` directory at your
+project root (no configuration needed). Alternatively, place skills in
+``~/.config/gptme/skills/`` for user-global availability across all projects.
+
+Skills are loaded by name — request one explicitly in a session:
+
+.. code-block:: bash
+
+    gptme "Using the db-migration skill, help me add a nullable email field to the User model"
+
+**Notes**
+
+- Skills are plain markdown files — commit them to your project repo so all
+  contributors benefit from them.
+
+- Skills work across runtimes (gptme terminal, Claude Code with the hook
+  adapter). Write them once, use them everywhere.
+
+- See :doc:`skills` for the full skills reference.
+
+----
+
+Compose Skills into Workflows
+------------------------------
+
+**Difficulty**: Advanced | **Category**: Skill Composition
+
+**Problem**
+
+Real-world workflows are multi-step: run tests, update a changelog, bump a
+version, create a tag, post a release. Writing a single monolithic prompt for
+this is brittle — it's hard to update one step without breaking others, and you
+can't reuse the individual steps elsewhere.
+
+**Solution**
+
+gptme skills compose explicitly. A workflow skill is a sequenced list of steps,
+while focused sub-skills hold the detailed conventions for each step. Name the
+workflow and every sub-skill you want loaded in the prompt; mentioning the
+workflow alone does not recursively load skills that it references.
+
+This gives you a library of reusable primitives that snap together into larger
+workflows without duplicating their detailed instructions.
+
+**Example**
+
+Three focused sub-skills, each in its own ``SKILL.md``:
+
+.. code-block:: bash
+
+    # skills/release-check-tests/SKILL.md
+    ---
+    name: release-check-tests
+    description: Verify the test suite passes before any release action
+    ---
+    # Check Tests Before Release
+
+    Always run the full test suite before any release action:
+
+        make test
+
+    If any test fails, STOP and fix it before proceeding.
+
+.. code-block:: bash
+
+    # skills/release-update-changelog/SKILL.md
+    ---
+    name: release-update-changelog
+    description: Changelog update convention for releases
+    ---
+    # Changelog Update Convention
+
+    Format: `## [X.Y.Z] - YYYY-MM-DD` with sections Added / Changed / Fixed / Removed.
+    Always add the new version block at the TOP of CHANGELOG.md, above previous versions.
+    Never delete old entries.
+
+.. code-block:: bash
+
+    # skills/release-tag-and-push/SKILL.md
+    ---
+    name: release-tag-and-push
+    description: Git tagging and push convention for releases
+    ---
+    # Tag and Push Convention
+
+    Create an annotated tag:
+
+        git tag -a v$VERSION -m "Release v$VERSION" && git push origin master --tags
+
+    Do not push without a passing CI run on master.
+
+A workflow skill that chains all three into a single step:
+
+.. code-block:: bash
+
+    # skills/release-workflow/SKILL.md
+    ---
+    name: release-workflow
+    description: Full release pipeline — test, changelog, tag, push
+    ---
+    # Release Workflow
+
+    Steps in order:
+    1. Run `make test` (stop on failure)
+    2. Update CHANGELOG.md with the new version
+    3. Commit the changelog: `git commit CHANGELOG.md -m "chore: update changelog for vX.Y.Z"`
+    4. Create the annotated tag and push: `git tag -a v$VERSION -m "Release v$VERSION" && git push origin master --tags`
+
+Trigger the full workflow and load its three focused conventions with one
+prompt:
+
+.. code-block:: bash
+
+    gptme "Using the release-workflow, release-check-tests, release-update-changelog, and release-tag-and-push skills, do a release for v1.4.2"
+
+**Notes**
+
+- Keep sub-skills under ~50 lines each. Long skills dilute focus; split them.
+
+- Skills are versioned in git — use ``git log skills/`` to audit how your
+  workflows have evolved over time.
+
+- See :doc:`skills` for the full skill format reference.
+
+----
+
+Write a Custom Tool Plugin
+--------------------------
+
+**Difficulty**: Advanced | **Category**: Custom Tools
+
+**Problem**
+
+gptme's built-in tools cover general-purpose tasks, but domain-specific
+operations — querying a proprietary API, reading a custom binary format, calling
+an internal service — require a custom tool. Without one, you're pasting raw
+output into the prompt by hand, which is slow and error-prone.
+
+**Solution**
+
+gptme has a plugin API. A plugin is a Python package that exposes a
+``GptmePlugin`` instance via the ``gptme.plugins`` entry-point group. Each tool
+in the plugin is a ``ToolSpec`` with a name, description (shown to the LLM), and
+a ``functions`` list of Python callables the LLM can invoke directly. Write typed
+functions with docstrings and gptme surfaces them as structured tool calls.
+
+**Example**
+
+A plugin that lets gptme query a local SQLite database:
+
+.. code-block:: python
+
+    # my_gptme_plugin/__init__.py
+    import sqlite3
+    from gptme.tools.base import ToolSpec
+    from gptme.plugins.plugin import GptmePlugin
+
+    def query_db(db_path: str, sql: str) -> str:
+        """Execute a read-only SQL query against a local SQLite database.
+
+        Args:
+            db_path: Path to the SQLite database file.
+            sql: SELECT statement to run.
+
+        Returns:
+            Query results as a Markdown table, or "(no results)" when no rows match.
+        """
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+        cur = con.execute(sql)
+        rows = cur.fetchall()
+        cols = [d[0] for d in cur.description] if cur.description else []
+        if not cols:
+            return "(no results)"
+        header = " | ".join(cols)
+        sep = " | ".join("---" for _ in cols)
+        body = "\n".join(" | ".join(str(c) for c in row) for row in rows)
+        return f"{header}\n{sep}\n{body}"
+
+    plugin = GptmePlugin(
+        name="sqlite",
+        tools=[
+            ToolSpec(
+                name="query_db",
+                desc="Run a read-only SQL query against a local SQLite database and return results as a Markdown table.",
+                functions=[query_db],
+            )
+        ],
+    )
+
+.. code-block:: toml
+
+    # pyproject.toml (in the plugin package)
+    [project]
+    name = "my-gptme-plugin"
+    version = "0.1.0"
+
+    [project.entry-points."gptme.plugins"]
+    sqlite = "my_gptme_plugin:plugin"
+
+Install and use:
+
+.. code-block:: bash
+
+    pip install -e ./my_gptme_plugin
+
+    # Verify it loaded
+    gptme tools list
+
+    # Use it in a session
+    gptme "Query the users table in /var/app/prod.db and find accounts created in the last 7 days"
+
+gptme will call ``query_db`` with the right arguments and show you the results
+inline, without you needing to copy-paste any SQL output.
+
+**Notes**
+
+- Use ``mode=ro`` in the SQLite URI (as shown) to prevent accidental writes from
+  a buggy SQL statement the LLM generates.
+
+- Keep tool descriptions concise but precise — the LLM reads the ``desc`` field
+  to decide when and how to call the tool.
+
+- gptme derives the tool's parameter schema from the function's type annotations
+  and docstring ``Args:`` section; keep both accurate.
+
+- See :doc:`plugins` for the full ``GptmePlugin`` and ``ToolSpec`` API reference.
+
+
 # How-To Guides
 
 Task-oriented recipes for common workflows with gptme.
@@ -1444,6 +2112,7 @@ Each guide gives you a copy-pasteable pattern you can adapt immediately.
 ```{toctree}
 :maxdepth: 1
 
+choose-workflow
 minimal-context
 edit-files
 code-review
@@ -1453,6 +2122,9 @@ refactor
 computer-use
 tts-setup
 ```
+
+## Choose a Workflow
+[Match the task to the right workflow](choose-workflow.md) — pick tools, model capability, local or remote execution, and an approval boundary from the outcome you need.
 
 ## Minimal Context
 [Run gptme with minimal context](minimal-context.md) — measure and trim prompt sections for cheaper, tighter specialized runs.
@@ -1481,6 +2153,134 @@ tts-setup
 ---
 
 For shorter examples and one-liners, see {doc}`../examples`.
+
+
+# Choose a workflow for your task
+
+Start with the outcome, not a provider or feature name. Most gptme tasks fit one
+of the four rows below. Pick the narrowest execution surface that can finish the
+job, then increase model capability or tool access only when the task requires it.
+
+## Decision matrix
+
+| Task | Start here | Model tier | Execution and approval posture |
+|---|---|---|---|
+| **Answer a low-stakes question** | Run `gptme "…"` with no tools when the answer does not need live or local evidence. | Small and fast. | No external actions; inspect the answer before relying on it. |
+| **Research a topic** | Give the agent the browser tool and ask for linked sources plus a short synthesis. | Small for collection; stronger reasoning for conflicting evidence or an important decision. | Keep the work local and require source links. The browser can interact with pages, so explicitly forbid external actions and use environment or credential isolation when confirmation prompts are not a reliable boundary. |
+| **Create an artifact** | Name the output file and acceptance criteria: a report, image, script, or web page. | General-purpose; use a stronger model when structure or judgment matters. | Write only to a dedicated workspace. Review the artifact before sending or publishing it. |
+| **Change inspectable code** | Run gptme inside a version-controlled checkout; ask it to inspect, edit, test, and show the diff. | Strong coding/reasoning model. | Use confirmations for interactive work or a review-gated branch/PR workflow for autonomous work. Isolate untrusted repositories. |
+
+Model names change faster than these capabilities. See {doc}`../model-routing`
+for current model examples and {ref}`tool-allowlist` for exact tool-selection
+syntax.
+
+## Copy-paste starting points
+
+### Low-stakes answer
+
+```bash
+gptme --tools "" \
+  "Explain the difference between a process and a thread in five bullets."
+```
+
+Use this for explanations, brainstorming, and rewriting that need no current
+facts or local files. If the answer affects money, safety, legal obligations, or
+production behavior, it is no longer low-stakes: ask for evidence and verify it.
+
+### Research
+
+```bash
+gptme --tools "browser,rag,chats,read" \
+  "Compare three maintained Python task queues. Cite primary sources, state the tradeoffs, and save nothing. Use the browser only to read and search; do not interact with pages."
+```
+
+The browser tool also exposes page interactions such as clicks and form entry;
+its allowlist entry does not restrict it to reading, and confirmation prompts do
+not cover every browser operation. Explicitly prohibit external actions in the
+task, but do not treat that instruction as a security boundary. For stronger
+assurance, run in a VM or container without sensitive credentials or use a
+restricted account or fine-grained token that cannot write. Use
+`hint:read-only` only for tools actually annotated as read-only. For an
+important choice, split collection from judgment: gather sources cheaply, then
+use a stronger model to challenge the synthesis and identify missing evidence.
+
+### Artifact creation
+
+```bash
+mkdir -p output
+cd output
+gptme \
+  "Create report.md comparing the supplied options. Include a decision table and a sources section. Do not publish or send it."
+```
+
+An artifact-oriented task has a named deliverable and acceptance criteria. A
+file you can inspect, test, or render is easier to verify than a vague request
+to "work on" something. Use local execution when the output depends on private
+files or local tools. Use a remote or hosted workspace only when its convenience
+outweighs the cost of uploading the inputs, and never upload secrets by default.
+
+### Inspectable code
+
+```bash
+cd /path/to/version-controlled-project
+gptme \
+  "Inspect the failing tests, make the smallest fix, rerun the targeted tests, and show me the diff. Do not commit or push."
+```
+
+A local checkout gives you a strong review surface: version control, tests, and
+a diff. For autonomous work, use the review-gated branch/PR workflow in
+{doc}`../automation`: stage and inspect every change, commit only that reviewed
+artifact, push only a feature branch, and stop before merge. A PR does not cover
+side effects outside the checkout, so remove external credentials or constrain
+them with a dedicated GitHub account or fine-grained token. Review an unfamiliar
+repository's `gptme.toml` before starting because project configuration can run
+hooks and context commands. See {doc}`../security` for the complete trust model.
+
+## Local or remote?
+
+Choose based on where the required data and verification tools already live:
+
+- **Local execution** is the default for private files, existing repositories,
+  device access, and work that must be verified with local tests.
+- **Remote or hosted execution** is useful for a clean disposable environment,
+  collaboration, or work that must continue after your machine disconnects.
+- **Do not copy data merely to fit the surface.** Keep sensitive inputs where
+  they already are, or create an isolated environment with only the files the
+  task needs.
+- **Treat remote execution as a different trust boundary.** Check credential,
+  retention, network, and filesystem access before granting tools.
+
+## Approval rule
+
+Use interactive confirmations when a human is present, or a review-gated
+artifact workflow when autonomous work can be fully contained in a checkout.
+Confirmation prompts are not available in non-interactive mode and do not cover
+every operation, so they are a convenience rather than a complete security
+boundary. Require an explicit human review immediately before any action that:
+
+- sends a message or submits a form;
+- spends money or creates a paid resource;
+- deletes or irreversibly overwrites data; or
+- publishes, deploys, merges, or pushes work to other people.
+
+Drafting is not publishing. Preparing a command is not running it. Ask gptme to
+stop at the reviewable boundary (`"write the draft but do not send"`, `"show the
+diff but do not commit"`). Avoid `--no-confirm` and `--non-interactive` for
+these actions; non-interactive mode implies no confirmations.
+
+## Escalate deliberately
+
+Change one dimension at a time when the first attempt is insufficient:
+
+1. Add the missing evidence source or local context.
+2. Grant the narrow tool capability needed to inspect or verify it.
+3. Move to a stronger model when the remaining problem is judgment or complex
+   reasoning, not missing information.
+4. Move from local to remote (or the reverse) only when the task's data,
+   duration, or verification needs justify the trust-boundary change.
+
+This keeps cheap questions cheap, research bounded to approved read operations,
+artifacts inspectable, and consequential actions under human control.
 
 
 # Run gptme with minimal context
@@ -2461,6 +3261,7 @@ Overview
 - `Save`_ - Create and overwrite files
 - `Patch`_ - Apply precise changes to existing files
 - `Morph`_ - Apply fast targeted edits using Morph Fast Apply
+- `Hashline Edit`_ - Snapshot-anchored line-range edits with stale-file detection
 
 💻 Code & Development
 ^^^^^^^^^^^^^^^^^^^^^
@@ -2511,6 +3312,35 @@ Overview
 ^^^^^^^^^^^^^
 
 - `MCP`_ - Discover and connect Model Context Protocol servers
+
+Tool Interface Architecture
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+gptme's default tool interface is **Programmatic Tool Calling (PTC)**: the model
+writes executable code in fenced code blocks, and gptme runs it directly. For the
+default ``markdown`` and ``xml`` formats, no JSON schemas are sent to the model
+and no JSON-structured responses are parsed.
+
+The primary dispatch path is ``"markdown"`` format: a fenced code block whose
+language tag identifies any registered tool name (``python``, ``shell``, ``save``,
+``patch``, and others), and whose content gptme routes to
+``ToolSpec.execute(code, args, kwargs)``. For Python, this means IPython's
+``run_cell()``; for Shell, ``subprocess.Popen`` with a stateful bash shell.
+
+gptme also supports a **provider-native tool mode** (``"tool"`` format) for
+OpenAI and Anthropic APIs, where ``ToolSpec`` parameters are converted to
+JSON-schema definitions and sent to the provider — trading context-rot resilience
+for provider-side tool routing compatibility.
+
+**Why default to PTC?** A 2026 benchmark study (arXiv:2608.06370, *"The Bitter Lesson of
+Tool Calling"*) found that PTC matches or exceeds JSON-schema tool calling on
+11/14 models and — critically — **maintains accuracy under context rot** (long
+sessions with accumulated tool history) while JSON-schema accuracy degrades ~2.3%.
+Autonomous gptme sessions routinely accumulate 50–200 tool calls; this is exactly
+the regime where JSON-schema approaches falter.
+
+See :doc:`design/ptc-tool-interface` for the full architecture documentation and
+2026-08-13 audit of dispatch paths in ``gptme/tools/``.
 
 Combinations
 ^^^^^^^^^^^^
@@ -2902,6 +3732,15 @@ Morph
     :members:
     :noindex:
 
+.. _hashline edit:
+
+Hashline Edit
+-------------
+
+.. automodule:: gptme.tools.hashline_edit
+    :members:
+    :noindex:
+
 .. _gh:
 
 GH
@@ -2950,6 +3789,21 @@ Vent
 ----
 
 .. automodule:: gptme.tools.vent
+    :members:
+    :noindex:
+
+Request tool change
+-------------------
+
+``request_tool_change`` is an opt-in, audit-only relief valve for assistants
+that need a different session tool configuration. It records a structured
+request in ordinary tool-call history; it does not enable, disable, or configure
+any tool. Enable it explicitly with ``-t +request_tool_change``.
+
+This is separate from ``vent``: ``vent`` records operational friction, while
+``request_tool_change`` names a concrete tool-configuration request.
+
+.. automodule:: gptme.tools.request_tool_change
     :members:
     :noindex:
 
@@ -3020,8 +3874,18 @@ Pass a comma-separated list of tool names to ``--tools`` (CLI) or set the
     # Disable all tools (pure conversation)
     gptme --tools "" "just talk to me"
 
+    # Strict audit mode: only the built-in read tool, no writes or execution
+    gptme --tools read-only "summarise this repo"
+
 Glob patterns (``*``, ``?``, ``[...]``) are also supported, matched against tool
 names with :func:`fnmatch.fnmatchcase`.
+
+``read-only`` is a named preset, not a hint pattern. It expands to the built-in
+``read`` tool only, and cannot be combined with other tool names. This makes it
+safe for auditing untrusted workspaces where ``shell``, ``ipython``, ``save``,
+``append`` and ``patch`` must stay unavailable. Use ``hint:read-only`` only when
+you explicitly want to trust third-party tool annotations, such as MCP server
+metadata.
 
 .. _hint-allowlist:
 
@@ -3034,7 +3898,7 @@ once using the ``hint:`` prefix:
 
 .. code-block:: bash
 
-    # Allow only tools annotated as read-only (safe for untrusted workspaces)
+    # Allow only tools annotated as read-only
     gptme --tools "hint:read-only" "summarise this repo"
 
     # Mix exact names with hint patterns
@@ -3060,9 +3924,9 @@ The following hints are defined:
 
 .. note::
 
-    Built-in gptme tools do not carry hints in the current release. Hints are
-    currently populated automatically from **MCP tool annotations** (see below).
-    You can also set hints explicitly when :doc:`writing custom tools <custom_tool>`.
+    The built-in ``read`` tool carries the ``read-only`` hint. MCP tools can also
+    carry the hint through server-supplied annotations (see below), so
+    ``hint:read-only`` is broader than the strict ``read-only`` preset.
 
 MCP tool annotations
 ^^^^^^^^^^^^^^^^^^^^^
@@ -3142,6 +4006,156 @@ spawning subagents programmatically:
     # gptme.toml
     [env]
     TOOL_ALLOWLIST = "shell,patch,save,read,hint:read-only"
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Tool guides
+
+   browser
+
+
+# Browser Tool
+
+gptme includes a browser tool that lets the assistant load pages, read their
+content, take screenshots, and interact with web pages.
+
+## Backends
+
+### Playwright (recommended)
+
+Full browser automation with screenshots, ARIA snapshots, clicking, form
+filling, and scrolling.
+
+**Installation:**
+
+```bash
+pipx install 'gptme[browser]'
+PW_VERSION=$(pipx runpip gptme show playwright | grep Version | cut -d' ' -f2)
+pipx run playwright==$PW_VERSION install chromium-headless-shell
+```
+
+### Lynx
+
+Text-only fallback for basic page reading and web search.  No screenshot
+support.
+
+```bash
+# Ubuntu / Debian
+sudo apt install lynx
+# macOS
+brew install lynx
+```
+
+---
+
+## Engine Configuration (`GPTME_BROWSER_ENGINE`)
+
+The Playwright backend accepts three forms for `GPTME_BROWSER_ENGINE`:
+
+| Value | Meaning |
+|-------|---------|
+| `chromium` (default) | Playwright's bundled Chromium headless shell |
+| `firefox` | Playwright's bundled Firefox |
+| `/path/to/binary` | Custom executable at a filesystem path |
+| `executable-name` | Executable resolved via `$PATH` (`shutil.which`) |
+
+Custom executables (path or name) are always launched with the **Firefox**
+engine so they receive the same Playwright browser-context options.
+
+### Use Firefox instead of Chromium
+
+Useful for pages that detect and block headless Chromium.
+
+```bash
+PW_VERSION=$(pipx runpip gptme show playwright | grep Version | cut -d' ' -f2)
+pipx run playwright==$PW_VERSION install firefox
+export GPTME_BROWSER_ENGINE=firefox
+gptme "read https://example.com"
+```
+
+### Use a fingerprint-patched Firefox (anti-detection)
+
+Some pages fingerprint headless browsers even when Firefox is used.
+A patched build such as [Camoufox](https://camoufox.com/) or
+[invisible-playwright](https://github.com/QIN2DIM/undetected-playwright)
+is a drop-in replacement that passes most fingerprint checks.
+
+**By absolute path:**
+
+```bash
+export GPTME_BROWSER_ENGINE=/usr/local/bin/camoufox-runner
+gptme "read https://bot-detection-test.vercel.app"
+```
+
+**By executable name on `$PATH`:**
+
+```bash
+# Assuming camoufox is on your PATH
+export GPTME_BROWSER_ENGINE=camoufox
+gptme "screenshot https://example.com"
+```
+
+gptme detects that the value is not a named engine, resolves it via
+`shutil.which`, and passes it to Playwright's `executable_path=` kwarg when
+launching Firefox.
+
+#### Example: Camoufox setup
+
+```bash
+# Install Camoufox (fingerprint-patched Firefox)
+pip install camoufox
+python -m camoufox fetch           # downloads the patched Firefox binary
+
+# Point gptme at it
+export GPTME_BROWSER_ENGINE=$(python -m camoufox path)
+gptme "read https://example.com"
+```
+
+---
+
+## CDP Mode (`GPTME_BROWSER_CDP_URL`)
+
+Connect to an already-running Chromium-based browser over the Chrome DevTools
+Protocol instead of launching a new one.  Useful when you want to reuse an
+existing authenticated browser session.
+
+```bash
+# Start Chrome/Chromium with remote debugging
+chromium --remote-debugging-port=9222
+
+# Connect gptme to it
+export GPTME_BROWSER_CDP_URL=http://127.0.0.1:9222
+gptme "read https://example.com"
+```
+
+> **Note:** CDP only works with Chromium-based browsers.  `GPTME_BROWSER_ENGINE`
+> is ignored in CDP mode.
+
+---
+
+## Session Persistence (`GPTME_BROWSER_STORAGE_STATE`)
+
+Save login cookies and local storage so authenticated sessions persist across
+restarts.
+
+```bash
+# Log in once and save state
+gptme "open https://x.com/login and log in with user@example.com / hunter2, then save_browser_state ~/.config/gptme/twitter.json"
+
+# Reuse in the next session
+export GPTME_BROWSER_STORAGE_STATE=~/.config/gptme/twitter.json
+gptme "tweet 'hello from gptme'"
+```
+
+---
+
+## Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GPTME_BROWSER_ENGINE` | `chromium` | Engine or executable: `chromium`, `firefox`, a path, or a name on `$PATH` |
+| `GPTME_BROWSER_CDP_URL` | *(unset)* | WebSocket URL of an existing Chrome DevTools Protocol server |
+| `GPTME_BROWSER_STORAGE_STATE` | *(unset)* | Path to a Playwright storage-state JSON file for persistent sessions |
 
 
 Commands
@@ -3602,9 +4616,25 @@ Manually trigger conversation compaction to reduce context size.
 
 .. code-block:: text
 
-   /compact           # Auto-compact using summarization
-   /compact auto      # Same as above
-   /compact resume    # Generate an LLM-powered resume/summary
+   /compact             # Rule-based trim (strips reasoning, truncates large tool outputs)
+   /compact trim        # Same as above
+   /compact summarize   # LLM-powered summarization (creates a RESUME.md and restarts context)
+
+Two strategies are available:
+
+- **trim** (default) — rule-based: strips old reasoning blocks, truncates massive tool
+  results, and compresses long assistant messages. Fast and deterministic; no LLM call.
+  Trim only runs when the rule-based heuristic determines it is worthwhile; if the
+  conversation is over the context limit but savings would be low, it will suggest
+  ``/compact summarize`` instead.
+
+- **summarize** — LLM-powered: asks the model to produce a ``RESUME.md`` capturing
+  key decisions, open tasks, and relevant file paths, then starts a fresh context
+  from that summary. More thorough but requires a model call.
+
+.. deprecated::
+   ``/compact auto`` and ``/compact resume`` are deprecated aliases for ``trim``
+   and ``summarize`` respectively. They still work but will emit a warning.
 
 .. note::
    Auto-compaction happens automatically when tool outputs exceed size thresholds.
@@ -3915,7 +4945,7 @@ Here is an example:
     #OPENAI_BASE_URL = "http://localhost:11434/v1"
 
     # Uncomment to change tool configuration
-    #TOOL_FORMAT = "markdown" # Select the tool formal. One of `markdown`, `xml`, `tool`
+    #TOOL_FORMAT = "markdown" # Select the tool format. One of `markdown`, `xml`, `tool` (see docs: Tool Formats)
     #TOOL_ALLOWLIST = "save,append,patch,ipython,shell,browser"  # Comma separated list of allowed tools
     #TOOL_MODULES = "gptme.tools,custom.tools" # List of python comma separated python module path
 
@@ -4197,6 +5227,9 @@ Besides the configuration files, gptme supports several environment variables to
 - ``GPTME_CHECK`` - Enable ``pre-commit`` checks (default: true if ``.pre-commit-config.yaml`` present, see :ref:`pre-commit`)
 - ``GPTME_CHAT_HISTORY`` - Enable cross-conversation context (default: false)
 - ``GPTME_COSTS`` - Enable cost reporting for API calls (default: false)
+- ``GPTME_SESSION_BUDGET_USD`` - Optional per-session cost budget in USD. When set, gptme warns once the current session crosses ``GPTME_BUDGET_WARN_PCT`` of the budget.
+- ``GPTME_SESSION_BUDGET_TOKENS`` - Optional per-session token budget. Counts input, output, cache-read, and cache-creation tokens.
+- ``GPTME_BUDGET_WARN_PCT`` - Percentage of the configured session budget that triggers the warning (default: 80).
 - ``GPTME_FRESH`` - Enable fresh context mode (default: false)
 - ``GPTME_BREAK_ON_TOOLUSE`` - Interrupt generation when tool use occurs in stream. Default is model-dependent: ``false`` for capable models that support parallel tool calls (e.g. claude-sonnet-4-6, gpt-4o), ``true`` for others. Set to ``0`` to force parallel tool calls, ``1`` to force single tool call per response (equivalent to ``--multi-tool`` flag).
 - ``GPTME_PATCH_RECOVERY`` - Return file content in error for non-matching patches (default: false)
@@ -4205,6 +5238,7 @@ Besides the configuration files, gptme supports several environment variables to
 .. rubric:: API Configuration
 
 - ``LLM_API_TIMEOUT`` - Set the timeout in seconds for LLM API requests (default: 600). Must be a valid numeric string (e.g., "600", "1800"). Useful for local LLMs that may take longer to respond.
+- ``GPTME_LLM_MAX_RETRIES`` - Number of attempts (including the first) for a failing LLM request (default: 11). Retries use exponential backoff capped at 60s per wait, giving a ~5 minute window so a brief upstream rate-limit or outage does not end a long session. Provider SDK-level retries are disabled so this is the only retry loop.
 - ``GPTME_ANTHROPIC_FAST_MODE`` - Enable Anthropic fast mode for the Anthropic provider (default: false). When enabled, requests set ``speed: "fast"`` for up to ~2.5x higher output tokens/sec at premium pricing — a research preview available on Claude Opus 4.8+. Requires an org with fast-mode access; otherwise the API returns an error. Off by default, so it never affects standard usage. Useful for latency-sensitive callers (e.g. gptme-voice).
 
 .. rubric:: Browser Configuration
@@ -4225,7 +5259,7 @@ The variable name is derived from the parameter name in uppercase.
 Common examples:
 
 - ``GPTME_MODEL`` - Set the model (equivalent to ``--model``)
-- ``GPTME_TOOL_FORMAT`` - Set the tool format (equivalent to ``--tool-format``)
+- ``GPTME_TOOL_FORMAT`` - Set the tool format (equivalent to ``--tool-format``), see :doc:`tool-formats`
 - ``GPTME_WORKSPACE`` - Set the workspace (equivalent to ``--workspace``)
 - ``GPTME_TOOL_ALLOWLIST`` - Set allowed tools (equivalent to ``--tools``)
 
@@ -4258,67 +5292,25 @@ Providers
 
 We support LLMs from several providers, including OpenAI, Anthropic, OpenRouter, Requesty, Deepseek, Azure, and any OpenAI-compatible server (e.g. ``ollama``, ``llama-cpp-python``).
 
-.. note::
+You can also bring your own subscription instead of an API key: a ChatGPT Plus/Pro plan via `OpenAI Subscription`_ or a SuperGrok plan via `Grok Subscription`_.
 
-    We are in the process of adding support for configurable `custom providers <providers-custom>`_.
+.. important::
 
-.. rubric:: Provider Plugins (Entry Points)
-
-Third-party packages can register LLM providers via Python entry points, making them available immediately after ``pip install`` without any configuration changes.
-
-**How it works:** A plugin package declares an entry point in the ``gptme.providers`` group::
-
-    [project.entry-points."gptme.providers"]
-    minimax = "gptme_provider_minimax:provider"
-
-Where ``provider`` is a ``ProviderPlugin`` instance.
-
-**Usage:** Once installed, use the provider name as the model prefix::
-
-    pip install gptme-provider-minimax
-    gptme "hello" -m minimax/abab6.5s-chat
-
-**Creating a provider plugin:**
-
-.. code-block:: python
-
-    from gptme.llm.models import ModelMeta, ProviderPlugin
-
-    provider = ProviderPlugin(
-        name="minimax",                          # Unique provider name
-        api_key_env="MINIMAX_API_KEY",           # Env var for API key
-        base_url="https://api.minimax.chat/v1",  # OpenAI-compatible endpoint
-        models=[
-            ModelMeta(provider="unknown", model="minimax/abab6.5s-chat", context=245_760),
-        ],
-    )
-
-**ProviderPlugin fields:**
-
-================= ======== ==========================================================
-Field             Required Description
-================= ======== ==========================================================
-``name``           Yes      Unique provider name (e.g. ``"minimax"``)
-``api_key_env``    Yes      Environment variable holding the API key
-``base_url``       Yes      OpenAI-compatible API base URL
-``models``         No       List of ``ModelMeta`` objects
-``init``           No       Custom ``(Config) -> None``; ``None`` = auto-init OpenAI client
-================= ======== ==========================================================
-
-If ``init`` is provided, it **must** register an OpenAI-compatible client before returning, or gptme will raise a ``RuntimeError``.
-
-Plugin providers are auto-initialised on first use and routed through the OpenAI client path.
+    A provider or subscription backend is not an agent harness. This page
+    configures model access **inside the gptme runtime**. For example,
+    ``openai-subscription`` uses ChatGPT subscription access from gptme; it does
+    not run the Codex CLI harness. Likewise, ``grok-subscription`` does not run
+    the Grok Build harness. See :ref:`agent-runtime-portability` for the
+    workspace / harness / model / access distinction.
 
 .. note::
 
-   For new plugins, consider using the :ref:`unified plugin system <unified-plugins>` (``gptme.plugins`` entry-point group) instead. It lets a single package provide tools, hooks, commands, **and** a provider together. The ``gptme.providers`` group still works and is supported for backward compatibility.
+    We are in the process of adding support for configurable :doc:`custom providers <providers-custom>`.
 
 You can find our model recommendations on the :doc:`evals` page.
 
-.. toctree::
-   :maxdepth: 2
-
-   providers-custom
+Selecting a provider and model
+------------------------------
 
 To select a provider and model, run ``gptme`` with the ``-m``/``--model`` flag set to ``<provider>/<model>``, for example:
 
@@ -4332,10 +5324,18 @@ To select a provider and model, run ``gptme`` with the ``-m``/``--model`` flag s
     gptme "hello" -m gemini/gemini-2.5-flash
     gptme "hello" -m groq/llama-3.3-70b-versatile
     gptme "hello" -m xai/grok-4
+    gptme "hello" -m openai-subscription/gpt-5.5-pro
+    gptme "hello" -m grok-subscription/grok-4.6
     gptme "hello" -m local/llama3.2:1b
     gptme "hello" -m gptme/claude-sonnet-4-6
 
 You can list the models known to gptme using ``gptme '/models' - '/exit'``.
+
+Which tool format a model performs best with also varies by provider and model —
+see :doc:`tool-formats` for how to choose one.
+
+Configuring credentials
+-----------------------
 
 To configure provider credentials interactively, run ``/account`` inside gptme:
 
@@ -4349,6 +5349,8 @@ To configure provider credentials interactively, run ``/account`` inside gptme:
 
 For providers without OAuth onboarding yet, ``/account setup <provider>`` prompts for the key without putting it in shell history and stores it in ``~/.config/gptme/credentials.toml`` (or ``$XDG_CONFIG_HOME/gptme/credentials.toml`` if set). Supported manual providers currently include ``anthropic``, ``openai``, ``deepseek``, ``gemini``, ``groq``, and ``xai``.
 
+Subscription sign-in (ChatGPT Plus/Pro and SuperGrok) is also offered in the first-run setup when gptme starts without any configured credentials.
+
 You can still use the ``[env]`` section in the :ref:`global-config` file to store API keys using the same format as the environment variables:
 
 - ``OPENAI_API_KEY="your-api-key"``
@@ -4359,7 +5361,8 @@ You can still use the ``[env]`` section in the :ref:`global-config` file to stor
 - ``GROQ_API_KEY="your-api-key"``
 - ``DEEPSEEK_API_KEY="your-api-key"``
 
-.. rubric:: OpenAI Platform
+OpenAI Platform
+---------------
 
 Use the direct OpenAI Platform provider with ``openai/<model>``:
 
@@ -4398,7 +5401,8 @@ falsy values.
     ``openai-subscription`` provider uses its own Responses API path by
     default.
 
-.. rubric:: OpenRouter
+OpenRouter
+----------
 
 `OpenRouter <https://openrouter.ai/>`_ provides access to 100+ models through a single API key. gptme applies sensible defaults for OpenRouter requests:
 
@@ -4423,7 +5427,8 @@ falsy values.
     # Common values: fp16, bf16, fp8, int8, int4, unknown
     OPENROUTER_QUANTIZATION = "fp16,bf16"
 
-.. rubric:: Requesty
+Requesty
+--------
 
 `Requesty <https://requesty.ai/>`_ is an OpenAI-compatible LLM gateway that routes to many models through a single API key, using the same ``provider/model`` naming as OpenRouter (e.g. ``requesty/openai/gpt-4o-mini``, ``requesty/anthropic/claude-sonnet-4-5``). It is reached through the standard OpenAI-compatible client path.
 
@@ -4437,7 +5442,8 @@ falsy values.
 
 Get an API key at https://app.requesty.ai/api-keys. See https://docs.requesty.ai for details.
 
-.. rubric:: Groq
+Groq
+----
 
 `Groq <https://groq.com/>`_ provides fast inference for open-source models via its own API key — **not** through the ``OPENAI_BASE_URL`` / ``OPENAI_API_KEY`` pattern.
 
@@ -4472,7 +5478,8 @@ Popular Groq models:
 - ``groq/llama-3.3-70b-versatile`` — fast 70B Llama 3.3
 - ``groq/llama-3.1-8b-instant`` — fastest, smallest
 
-.. rubric:: OpenAI Subscription
+OpenAI Subscription
+-------------------
 
 You can use your existing ChatGPT Plus/Pro subscription with gptme. This uses the ChatGPT backend API (Codex endpoint) instead of the OpenAI Platform API, allowing you to leverage your subscription for development.
 
@@ -4519,7 +5526,45 @@ You can also append reasoning levels: ``:low``, ``:medium``, ``:high``, or ``:xh
     For production or multi-user applications, use the OpenAI Platform API.
     OAuth credentials are stored locally and access tokens are refreshed automatically.
 
-.. rubric:: gptme Managed Service
+Grok Subscription
+-----------------
+
+You can use your existing SuperGrok subscription (`grok.com <https://grok.com>`_) with gptme, instead of an xAI API key. This uses the same subscription endpoint as the grok CLI.
+
+**Setup:**
+
+If you have the grok CLI installed and have run ``grok login``, gptme automatically reuses those tokens (from ``~/.grok/auth.json``) with no extra steps.
+
+Otherwise, authenticate directly using the OAuth command (opens browser for login):
+
+.. code-block:: sh
+
+    gptme-auth grok-subscription
+
+This stores credentials locally at ``~/.config/gptme/oauth/grok_subscription.json``.
+Access tokens are automatically refreshed before expiry, and refreshed tokens are synced back to the grok CLI's auth file when present.
+
+**Usage:**
+
+.. code-block:: sh
+
+    gptme "hello" -m grok-subscription/grok-4.6
+    gptme "hello" -m grok-subscription/grok-4.5
+
+**Available Models:**
+
+- ``grok-4.6`` - Current frontier model (500K context, vision, reasoning)
+- ``grok-4.5`` - Previous frontier model (500K context, vision, reasoning)
+
+The subscription endpoint is OpenAI-compatible and supports native function calling (``--tool-format tool``).
+
+.. note::
+
+    This is for **personal development use** with your own SuperGrok subscription.
+    For production or multi-user applications, use the xAI Platform API (``xai`` provider) with an API key from `console.x.ai <https://console.x.ai>`_.
+
+gptme Managed Service
+---------------------
 
 The ``gptme`` provider connects to the `gptme.ai <https://gptme.ai>`_ managed service, which acts as an OpenAI-compatible LLM proxy/gateway. This gives you access to multiple model providers (Anthropic, OpenAI, etc.) through a single account.
 
@@ -4556,7 +5601,76 @@ Models are pass-through: ``gptme/<model>`` proxies to the corresponding backend 
     gptme-auth status              # Show current login status
     gptme-auth logout              # Remove stored credentials
 
-.. rubric:: Local
+Provider Plugins (Entry Points)
+-------------------------------
+
+Third-party packages can register LLM providers via Python entry points, making them available immediately after ``pip install`` without any configuration changes.
+
+**How it works:** A plugin package declares an entry point in the ``gptme.providers`` group::
+
+    [project.entry-points."gptme.providers"]
+    minimax = "gptme_provider_minimax:provider"
+
+Where ``provider`` is a ``ProviderPlugin`` instance.
+
+**Usage:** Once installed, use the provider name as the model prefix::
+
+    pip install gptme-provider-minimax
+    gptme "hello" -m minimax/MiniMax-M3
+
+**Creating a provider plugin:**
+
+.. code-block:: python
+
+    from gptme.llm.models import ModelMeta, ProviderPlugin
+
+    provider = ProviderPlugin(
+        name="minimax",                          # Unique provider name
+        api_key_env="MINIMAX_API_KEY",           # Env var for API key
+        base_url="https://api.minimax.chat/v1",  # OpenAI-compatible endpoint
+        models=[
+            ModelMeta(
+                provider="unknown",
+                model="minimax/MiniMax-M3",
+                context=1_000_000,
+                price_input=0.6,
+                price_output=2.4,
+                supports_vision=True,
+                supports_reasoning=True,
+            ),
+            ModelMeta(
+                provider="unknown",
+                model="minimax/MiniMax-M2.7",
+                context=204_800,
+                price_input=0.3,
+                price_output=1.2,
+                supports_reasoning=True,
+            ),
+        ],
+    )
+
+**ProviderPlugin fields:**
+
+================= ======== ==========================================================
+Field             Required Description
+================= ======== ==========================================================
+``name``           Yes      Unique provider name (e.g. ``"minimax"``)
+``api_key_env``    Yes      Environment variable holding the API key
+``base_url``       Yes      OpenAI-compatible API base URL
+``models``         No       List of ``ModelMeta`` objects
+``init``           No       Custom ``(Config) -> None``; ``None`` = auto-init OpenAI client
+================= ======== ==========================================================
+
+If ``init`` is provided, it **must** register an OpenAI-compatible client before returning, or gptme will raise a ``RuntimeError``.
+
+Plugin providers are auto-initialised on first use and routed through the OpenAI client path.
+
+.. note::
+
+   For new plugins, consider using the :ref:`unified plugin system <unified-plugins>` (``gptme.plugins`` entry-point group) instead. It lets a single package provide tools, hooks, commands, **and** a provider together. The ``gptme.providers`` group still works and is supported for backward compatibility.
+
+Local
+-----
 
 You can use local LLM models using any OpenAI API-compatible server.
 
@@ -4571,6 +5685,13 @@ To achieve that with ``ollama``, install it then run:
 .. note::
 
     Small models won't work well with tools, severely limiting the usefulness of gptme. You can find an overview of how different models perform on the :doc:`evals` page.
+
+.. toctree::
+   :maxdepth: 1
+   :caption: More about providers
+
+   providers-custom
+   tool-formats
 
 
 Custom and Local Providers
@@ -4708,6 +5829,29 @@ Tool use fails or loops
   **Cause:** Model too small for tool format
   **Fix:** Use a 7B+ instruction-tuned model; or try a different tool format (``gptme --tool-format xml``)
 
+Auto-discovery
+---------------
+
+``gptme providers list`` probes well-known local OpenAI-compatible endpoints and
+reports what it finds — including candidates that are not running:
+
+- Ollama: ``GET http://127.0.0.1:11434/v1/models``
+- LM Studio: ``GET http://127.0.0.1:1234/v1/models``
+
+Detection is an HTTP GET of the real ``/v1/models`` path (the OpenAI models
+list), not a port-open check and not Ollama's native ``/api/tags``. A process
+listening on the port that is not OpenAI-compatible is listed with a reason
+rather than silently skipped.
+
+Auto-discovery never writes config. Use ``gptme providers add`` (or a
+``[[providers]]`` block) to persist a provider. Disable probes with
+``GPTME_NO_LOCAL_DISCOVERY=1`` or ``gptme providers list --no-discover``.
+
+.. code-block:: sh
+
+    gptme providers list
+    gptme providers list --json
+
 vLLM and OpenAI-compatible servers
 -----------------------------------
 
@@ -4844,6 +5988,304 @@ Community threads and issues that motivated this page:
 - `Chutes provider support <https://github.com/gptme/gptme/issues/555>`_
 
 
+Tool Formats
+============
+
+gptme can hand tools to a model in three different ways, selected with
+``--tool-format``:
+
+- ``markdown`` — fenced code blocks (the default)
+- ``xml`` — XML-tagged blocks
+- ``tool`` — the provider's native tool/function-calling API
+
+This page explains what each one does and how to pick one. For the architectural
+rationale behind the non-native formats, see the "Tool Interface Architecture"
+section of :doc:`tools` and the :doc:`design/ptc-tool-interface` design document.
+
+Why there is more than one
+--------------------------
+
+gptme predates native tool/function calling being widely available and reliable,
+so its original — and still default — interface is **Programmatic Tool Calling
+(PTC)**: the model writes a fenced code block, and gptme executes it. No JSON
+schemas are sent to the model, and no JSON-structured response is parsed.
+
+Native tool calling later became available on most providers, and gptme supports
+it as the ``tool`` format. It is not automatically the best choice. Native tool
+calling gives you provider-side routing, constrained decoding against a schema,
+and (on some providers) parallel tool calls. In exchange, every tool definition
+is serialized into the request as JSON schema, and tool results accumulate as
+structured blocks rather than plain text.
+
+The practical upshot: **a good model should work reasonably well in all three
+formats**, and which one wins is an empirical question per model. The
+:doc:`evals` leaderboard reports the best-performing format per model from actual
+eval runs — that table is the most reliable answer for any model listed there.
+
+The three formats
+-----------------
+
+``markdown`` (default)
+^^^^^^^^^^^^^^^^^^^^^^
+
+The model emits a fenced code block whose language tag is a tool name:
+
+.. code-block:: text
+
+    ```patch test.txt
+    <<<<<<< ORIGINAL
+    old
+    =======
+    new
+    >>>>>>> UPDATED
+    ```
+
+**Strengths.** Nothing is sent as JSON schema, so tool definitions cost little
+context and are described in prose the model was heavily post-trained on. Writing
+code in fenced blocks is the single most common thing in any code model's
+training data, so instruction adherence tends to be high even for smaller models.
+It degrades gracefully: a slightly malformed block is still often recoverable.
+
+**Weaknesses.** Parsing is heuristic rather than schema-validated. Nested fenced
+code blocks are the classic failure mode — gptme handles variable-length fences
+(three or more backticks) and matches closing fences by length, but a
+model that emits mismatched fences can truncate its own tool call. There is no
+constrained decoding to stop the model inventing an argument.
+
+``xml``
+^^^^^^^
+
+The same calls, wrapped in XML tags:
+
+.. code-block:: xml
+
+    <tool-use>
+    <patch args="test.txt">
+    ...
+    </patch>
+    </tool-use>
+
+**Strengths.** Explicit delimiters make the boundary of a tool call unambiguous,
+which sidesteps the nested-code-block problem entirely. Models that were
+post-trained heavily on XML-tagged tool use (notably some Anthropic models) often
+adhere better here than in markdown. The system prompt is also emitted
+XML-sectioned in this mode.
+
+**Weaknesses.** More verbose, and content must be XML-escaped. Crucially,
+**in ``xml`` mode gptme does not parse markdown code blocks at all** — if the
+model falls back to a fenced block, the call is silently not executed. That makes
+``xml`` a poor fit for models that are inconsistent about which shape they emit.
+
+``tool`` (native)
+^^^^^^^^^^^^^^^^^
+
+Tools are sent to the provider as JSON-schema function definitions, and the
+provider returns structured tool calls, which gptme renders back into the log as:
+
+.. code-block:: text
+
+    @patch(call_abc123): {
+      "path": "test.txt",
+      "patch": "..."
+    }
+
+**Strengths.** Constrained decoding means arguments validate against the schema,
+so malformed calls are largely eliminated. Providers that support **parallel tool
+calls** can emit several calls in one response. On OpenAI Chat Completions, models
+that support **strict tool schemas** (structured outputs) get an additional
+guarantee that arguments conform exactly — gptme enables this only when every
+parameter of the tool is required.
+
+**Weaknesses.** Every enabled tool's schema is serialized into every request,
+which costs context and grows with your tool allowlist. Tool descriptions are
+truncated at 1024 characters (an OpenAI limit), so long tool instructions have to
+be shortened for this format. Accuracy is also more sensitive to context rot in
+long sessions — see the benchmark cited in :doc:`tools`.
+
+Note that ``tool`` mode still parses markdown code blocks in addition to native
+tool calls, so ``/impersonate`` and hand-written blocks keep working.
+
+**Not every provider supports it.** On the OpenAI-compatible chat-completions
+path, native tools are only accepted for ``openai``, ``azure``, ``openrouter``,
+``deepseek``, ``moonshot``, ``local``, and custom providers. Selecting
+``--tool-format tool`` on e.g. ``gemini``, ``xai``, ``groq``, ``nvidia`` or
+``requesty`` raises an error rather than silently degrading. Anthropic, the
+OpenAI Responses API, and ``openai-subscription`` all support it.
+
+Choosing a format
+-----------------
+
+Start with the :doc:`evals` leaderboard: it lists the best-performing format per
+model as measured, and that beats any rule of thumb.
+
+Absent eval data for your model, these heuristics hold up:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Situation
+     - Suggested format
+   * - Frontier model, long autonomous sessions
+     - ``markdown`` — best resilience to context rot, cheapest in context
+   * - Model that reliably emits XML tool use, or markdown fences keep breaking
+     - ``xml``
+   * - You want parallel tool calls or schema-validated arguments
+     - ``tool`` (check the model supports it — see below)
+   * - Small / weakly instruction-tuned local model
+     - Try ``xml`` first, then ``markdown``; ``tool`` usually needs a 7B+
+       instruction-tuned model
+   * - Model ignores tools or hallucinates arguments
+     - ``tool`` if the provider supports it, to get constrained decoding
+
+The considerations that actually differentiate models here are: support for
+parallel tool calling, support for tool-calling schemas and constrained decoding,
+and how much tool-use post-training the model received (which drives instruction
+adherence). A model can be excellent in general and still be limited by any one
+of these.
+
+Setting the format
+------------------
+
+.. code-block:: sh
+
+    gptme --tool-format xml "hello"
+
+Or via environment variable / config:
+
+.. code-block:: sh
+
+    export GPTME_TOOL_FORMAT=xml
+
+.. code-block:: toml
+
+    # ~/.config/gptme/config.toml
+    [env]
+    TOOL_FORMAT = "xml"
+
+Resolution order, highest priority first:
+
+1. The ``--tool-format`` CLI flag.
+
+2. The ``tool_format`` saved in a resumed conversation's chat config (it is
+   sticky across ``--resume``).
+
+3. ``GPTME_TOOL_FORMAT`` / ``TOOL_FORMAT``, from the process environment or an
+   ``[env]`` section in chat, project, or user config (in that order).
+
+4. The model's ``default_tool_format`` from its metadata, if set.
+
+5. ``markdown``.
+
+Switching model at runtime with ``/model`` also switches to that model's
+``default_tool_format`` if it declares one.
+
+.. _tool-format-model-metadata:
+
+Model metadata
+--------------
+
+``ModelMeta`` (``gptme/llm/models/types.py``) carries per-model fields that
+describe tool-calling capability. They are worth knowing about because they change
+behaviour silently:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 68
+
+   * - Field
+     - Meaning
+   * - ``default_tool_format``
+     - Preferred tool format for this model, used as a fallback when nothing
+       higher-priority sets one (step 4 above).
+   * - ``supports_parallel_tool_calls``
+     - The model can emit multiple tool calls in a single response. When this is
+       ``False``, gptme stops generation as soon as one complete tool call is
+       seen, so at most one call per assistant message runs. Override with
+       ``GPTME_BREAK_ON_TOOLUSE``.
+   * - ``supports_strict_tools``
+     - The model supports ``strict=True`` tool schemas (OpenAI structured
+       outputs). Only used on the OpenAI chat-completions path, and only for tools
+       whose parameters are all required.
+   * - ``preferred_edit_format``
+     - Hint for code edits — ``"diff"`` (patch/morph) or ``"whole"`` (save).
+       Derived from Aider's empirical per-model edit-format registry. Not a tool
+       format; listed here because it is adjacent and equally undocumented.
+
+**How well populated is this?** Unevenly, and it is worth being explicit about:
+
+- ``default_tool_format`` is set to ``tool`` on 92 of the 111 models in the
+  bundled registry. This is stamped **per provider**, not per model: every
+  provider that talks the OpenAI-compatible function-calling API gets it
+  (``openai``, ``openai-subscription``, ``gemini``, ``xai``, ``groq``,
+  ``deepseek``, ``moonshot``, ``openrouter``, ``requesty``, and the
+  subscription/proxy variants). ``anthropic`` is excluded because it uses the
+  Anthropic SDK rather than the OpenAI-compatible path, and ``mock`` is
+  test-only. An explicit per-model value always wins over the provider stamp.
+
+  Four OpenAI-compatible providers (``azure``, ``local``, ``nvidia``, ``gptme``)
+  ship no static registry entries at all, so there is nothing to stamp; they get
+  the same ``tool`` default applied at resolution time instead, including on
+  dynamic-fetch fallbacks.
+
+- ``supports_parallel_tool_calls`` is set on 51 entries: the Claude Opus/Sonnet
+  4.x families and their OpenRouter aliases, Kimi K3, the GPT-4.1/GPT-5
+  families, verified Gemini models (and the OpenRouter Gemini 3.5 Flash alias;
+  lite and experimental Gemini variants are excluded via
+  ``PARALLEL_TOOL_CALL_EXCEPTIONS``), xAI Grok (excluding the older
+  ``grok-2-vision-1212``; including ``grok-subscription``), Groq's
+  ``llama-3.3-70b-versatile``, DeepSeek chat/reasoner, and the OpenRouter
+  DeepSeek V4 aliases. Deliberate omissions are meaningful: Claude Haiku 4.5
+  carries an explicit comment that it does *not* emit multiple tool calls per
+  response. Moonshot Kimi K2/K2.6, OpenRouter Qwen/Llama/Kimi K2, and Groq's
+  gpt-oss models (not in this registry) stay unset because provider docs do not
+  clearly document parallel tool calls for those IDs.
+
+- ``supports_strict_tools`` is set on 23 entries: the OpenAI models (GPT-4o/4.1/5
+  families, o-series) and Kimi K3. DeepSeek documents a ``strict`` mode, but it
+  requires ``base_url=https://api.deepseek.com/beta``, which gptme does not use,
+  so the flag stays unset rather than sending ``strict=True`` on the production
+  endpoint. xAI tool arguments are implicitly schema-strict; that is not the
+  OpenAI ``strict=True`` request field, so it is also left unset.
+
+So this is not a complete capability matrix, and an absent flag means "not
+recorded", not "not supported". If a model you use is missing a flag it should
+have, that is a worthwhile contribution.
+
+One caveat on ``default_tool_format``: the provider-level stamp above encodes
+"this provider can do native tool calls", not "``tool`` measurably beats
+``markdown`` for this model". Those are different claims. The :doc:`evals`
+leaderboard is the source that can settle the second one — it already reports the
+best-performing format per model from measured runs. Consulted 2026-08-25: no
+registry model had a trustworthy disagreement with the provider heuristic
+(override bar: both the candidate format and the heuristic tested on ≥10 unique
+tests, a strict Wilson-score win, and a valid ``markdown``/``xml``/``tool``
+value), so no per-model overrides were added. The leaderboard's display cutoff
+of 4 tests is too weak to change a production default.
+
+Troubleshooting
+---------------
+
+**"Provider doesn't support tools API"** — you selected ``--tool-format tool`` on
+a provider that is not on the native-tools allowlist above. Use ``markdown`` or
+``xml``.
+
+**The model narrates a tool call but nothing runs** — in ``xml`` mode, markdown
+code blocks are not parsed. Either switch to ``markdown`` or steer the model back
+to XML.
+
+**Tool calls truncate mid-content** — usually nested fenced code blocks in
+``markdown`` mode. Try ``xml``.
+
+**Only one tool runs per turn** — expected unless the model declares
+``supports_parallel_tool_calls``. Set ``GPTME_BREAK_ON_TOOLUSE=false`` to
+override, at the risk of the model emitting calls the provider will not accept.
+
+**A small local model ignores tools entirely** — see the troubleshooting section
+in :doc:`providers-custom`; small models often need ``xml`` and a 7B+
+instruction-tuned base.
+
+
 Provider Integration Guide
 ==========================
 
@@ -4900,6 +6342,12 @@ Option 2: Provider Plugin Package
 
 A provider plugin is a Python package you publish to PyPI.  Once installed,
 users can use your provider without any config file changes.
+
+.. note::
+
+   The `gptme-provider-template <https://github.com/gptme/gptme-provider-template>`_
+   repository provides a ready-to-fork starting point with a minimal OpenAI-compatible
+   example and an OAuth flow example.  Clone it instead of starting from scratch.
 
 Minimum working example
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -5199,6 +6647,64 @@ If your provider supports image inputs (``supports_vision=True``), it must
 accept the standard OpenAI ``image_url`` content-part format — gptme passes
 images through without transcoding.
 
+Frequently Asked Questions
+----------------------------
+
+How do I choose a tokenizer?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Provider plugins do not currently declare a tokenizer.  gptme passes the
+fully-qualified model ID to its shared token-counting helper, strips known
+provider prefixes where supported, and asks ``tiktoken`` for that model's
+encoding.  Unknown models fall back to ``cl100k_base``; token counts are
+therefore estimates for models with a different tokenizer.
+
+There is no ``tokenizer`` field on ``ModelMeta`` yet, so a plugin cannot select
+``cl100k_base`` or ``o200k_base`` directly.  Keep the model's canonical upstream
+name when possible so ``tiktoken`` can recognize it.  If exact accounting is
+required, open an issue describing the provider and tokenizer family rather
+than adding an undocumented field to the plugin.
+
+Which capability flags should I set?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Capabilities are declared per model in ``ModelMeta``, not on
+``ProviderPlugin``.  Set only capabilities the endpoint actually supports:
+``supports_vision``, ``supports_reasoning``,
+``supports_parallel_tool_calls``, ``supports_strict_tools``, and
+``supports_responses_api``.  ``supports_streaming`` defaults to ``True`` but is
+currently metadata-only, as described above.
+
+These flags are used in different places: model listing and setup surfaces show
+them, vision handling checks ``supports_vision``, and streamed generation uses
+``supports_parallel_tool_calls`` to decide whether to stop after the first tool
+call.  A flag is not a generic transport adapter — the provider must still
+implement the corresponding OpenAI-compatible request and response behavior.
+
+Which entry-point group should I use?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Use ``gptme.providers`` when the package exports a standalone
+``ProviderPlugin``.  Use ``gptme.plugins`` only when the package exports a
+``GptmePlugin`` that bundles a provider with tools, hooks, or commands.  The two
+entry-point groups have different exported object types; they are not
+interchangeable aliases.
+
+What goes in ``ModelMeta.model``?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For a third-party provider, set ``provider="unknown"`` and use the fully
+qualified runtime ID in ``model``, for example ``"acme/turbo-v1"``.  The value
+is an identifier, not a display label, and its prefix must match
+``ProviderPlugin.name``.  Users pass that same ID to ``--model``.
+
+What units do the price fields use?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``price_input`` and ``price_output`` are USD per **one million tokens**.  Enter
+the provider's published per-million values directly — for example, a price of
+$0.10 per million input tokens is ``price_input=0.10``, not ``0.0001``.
+
 Related Documentation
 -----------------------
 
@@ -5206,8 +6712,8 @@ Related Documentation
 - :doc:`providers-custom` — custom Ollama/vLLM config reference
 - :doc:`plugins` — unified plugin system (tools + hooks + provider in one package)
 - :doc:`contributing` — general contribution guide
-- `Provider Plugin tests <https://github.com/gptme/gptme/blob/master/tests/test_provider_plugins.py>`_
-  — reference test suite for the plugin system
+- `Provider Plugin tests <https://github.com/gptme/gptme/blob/master/tests/test_provider_plugins.py>`_ — reference test suite for the plugin system
+- `gptme-provider-template <https://github.com/gptme/gptme-provider-template>`_ — minimal starter template with OpenAI-compatible and OAuth examples
 
 
 # Choosing your model
@@ -6253,13 +7759,114 @@ A parsed representation of a tool invocation found in an assistant's response.
 ### Runnable Tool
 A tool that can be executed in the current context. Some tools may be defined but not runnable (e.g., disabled or context-restricted).
 
-## Session Concepts
+## Conversation and Session Concepts
+
+(conversation)=
+### Conversation
+The primary unit of persistence in gptme. A named history of messages exchanged with an LLM,
+stored as a directory on disk. Each conversation has a unique ID (a random adjective-color-animal
+name by default, or a name you supply with `--name`).
+
+**Storage**: `~/.local/share/gptme/logs/<conversation-id>/conversation.jsonl`
+
+**Commands**:
+- Start: `gptme --name my-project "your prompt"` or just `gptme` (auto-names)
+- Resume: `gptme --name my-project` (by name) or `gptme -r` (most recent)
+- List: `gptme chats list`
+- Search: `gptme chats search <query>`
+- Rename: `/rename` in the TUI, or `gptme chats rename <id>`
+- Delete: `/delete` in the TUI
+
+**Disambiguation**: "conversation" is the persistent log on disk. A "run" or "session" (everyday use)
+means launching gptme and working in a conversation — no special object, just a process attached to
+a log. For analytics-tracking sessions, see [Analytics Session](#analytics-session).
+
+(branch)=
+### Branch
+An alternative message thread stored alongside the main thread within the same conversation
+directory. The default branch is named `"main"` and stored as `conversation.jsonl`.
+Named branches are stored as `branches/<branch-name>.jsonl` in the same log directory.
+
+Branches are mainly a **server-side concept**: the `gptme-server` API accepts a `branch` parameter
+on step/tool calls, allowing multiple AI exploration paths in the same conversation simultaneously.
+The TUI's `/fork` command creates a new top-level conversation rather than a branch within
+the current one.
+
+**Storage**: `…/<conversation-id>/branches/<branch-name>.jsonl`
+
+(fork)=
+### Fork
+A new, independent conversation created from a copy of messages 0 through turn N of an
+existing conversation. The original conversation is never modified. Both the TUI command
+and the CLI produce a new conversation directory.
+
+**Usage**:
+```bash
+# Fork at turn 3 (includes turns 0–2, the first 3 user+assistant exchanges)
+gptme-util chats fork my-project --at-turn 3
+
+# Fork with a custom name
+gptme-util chats fork my-project --at-turn 3 --name my-project-v2
+
+# Within a running conversation, fork at the current turn:
+# /fork my-experiment
+```
+
+**Distinction from Branch**: A fork creates a separate conversation ID with its own directory;
+a branch lives inside the original conversation's directory (server-side only).
 
 ### Log / LogManager
 The conversation history and its management system. Stores all messages exchanged in a session.
+`LogManager` handles file locking, branching, and workspace resolution. View reduction lives in
+`gptme/util/reduce.py`; workspace symlink creation happens in `ChatConfig.save()`.
+
+**Code reference**: `gptme/logmanager/manager.py`
 
 ### Workspace
-The directory context in which gptme operates. Tools like file operations are scoped to the workspace.
+The filesystem directory gptme operates in during a conversation. File operations, shell commands,
+and checkpoints are scoped to this directory.
+
+**Storage**: Symlinked at `…/<conversation-id>/workspace/` → the actual directory.
+
+**Set via**: `gptme --workspace <dir>`
+
+### Checkpoint
+A clean git HEAD reference recorded in the workspace's git history. Use to restore the workspace
+to a known good state before large or risky changes. Requires a committed working tree.
+
+**Commands**: `/checkpoint create`, `/checkpoint list`, `/checkpoint diff <id>`, `/checkpoint restore <id>`
+
+**Distinction from Snapshot**: Checkpoints require a committed tree; snapshots capture any state
+including uncommitted changes.
+
+### Snapshot
+A workspace state capture recorded in a side-git shadow repository. Can capture committed
+or uncommitted changes. Created automatically before and after each mutating tool call when
+the `auto_snapshots` plugin is enabled.
+
+**Commands**: `/snapshot create [label]`, `/snapshot list`, `/snapshot restore <sha>`, `/snapshot diff <sha>`
+
+### Backtrack Marker
+A named conversation position persisted to disk (in `conv-checkpoints.jsonl` alongside the log).
+Rewinding with `/backtrack` truncates the conversation log to the saved index and creates a backup
+branch — the log on disk is modified, but workspace files are not.
+
+**Commands**: `/backtrack mark [label]`, `/backtrack list`, `/backtrack <label|N>`
+
+**Distinction**: Unlike `/checkpoint` and `/snapshot`, backtracking does not touch workspace files.
+
+(analytics-session)=
+### Analytics Session
+A completed run record stored by the `gptme-sessions` package. Tracks metadata about a finished
+run: duration, cost, model, category, and quality grades. Cross-harness: records runs from
+gptme, Claude Code, Codex, and other compatible harnesses.
+
+**Storage**: `~/.local/share/gptme-sessions/sessions.jsonl` (configurable)
+
+**Commands**: `gptme sessions query`, `gptme sessions show <id>`, `gptme sessions stats`
+
+**Disambiguation**: Not the same as "starting a session" (everyday usage for launching gptme
+in a conversation). The analytics session is only created *after* the run completes.
 
 ## Configuration
 
@@ -6289,12 +7896,39 @@ Overview
        Persistent[🔒 Persistent<br/>Complete history<br/>Version controlled]
        Autonomous[🎯 Autonomous<br/>Long-term goals<br/>Proactive & self-directed]
        Evolving[🌱 Self-Improving<br/>Gets smarter over time<br/>Learns from experience]
+       Portable[🔁 Portable<br/>Workspace-owned identity<br/>Multiple runtimes]
 
        %% Force left-to-right layout
-       Persistent --- Autonomous --- Evolving
+       Persistent --- Autonomous --- Evolving --- Portable
 
        classDef benefits fill:#fff8e1,stroke:#f57f17,stroke-width:3px,color:#000
-       class Persistent,Autonomous,Evolving benefits
+       class Persistent,Autonomous,Evolving,Portable benefits
+
+.. _agent-runtime-portability:
+
+🔁 Runtime Portability
+^^^^^^^^^^^^^^^^^^^^^^
+
+**Your agent is the workspace, not the harness.** Identity, memory, tasks,
+lessons, journal, workflow, and audit history live in the version-controlled
+workspace. gptme is the native runtime for that workspace, but another harness
+can operate on the same durable agent state when it implements the same context
+and task-lifecycle contract.
+
+Keep four layers distinct:
+
+- **Agent workspace** — identity, memory, tasks, journal, lessons, and workflow.
+- **Harness / runtime** — the agent loop, tools, context loading, and permissions.
+- **Model / provider** — the model used for reasoning and generation.
+- **Access / billing** — API keys, local inference, managed services, or a
+  compatible subscription login.
+
+These layers are not a full Cartesian product. Each harness supports different
+models and access methods, and merely being able to read the repository is not
+the same as shipping a reliable autonomous adapter. See the
+`gptme-agent-template runtime compatibility matrix
+<https://github.com/gptme/gptme-agent-template#one-agent-multiple-runtimes>`_
+for the concrete support levels in the public template.
 
 🧠 Agent Brain
 ^^^^^^^^^^^^^^
@@ -6494,7 +8128,7 @@ Agents can run autonomously on a schedule using systemd (Linux) or launchd (macO
     gptme-agent stop                # Pause scheduled runs
     gptme-agent start               # Resume scheduled runs
 
-**Execution Flow:**
+**Execution Flow with gptme:**
 
 1. ``gptme`` builds context from all systems
 
@@ -6780,18 +8414,11 @@ When Vite runs separately on port 5701, allow that development origin:
 
 .. note::
 
-    **Host-header validation (DNS-rebinding protection).**
-    On loopback binds the server runs without an auth token, so it validates
-    the request ``Host`` header to block DNS-rebinding attacks (a malicious page
-    whose hostname re-resolves to ``127.0.0.1`` would otherwise become
-    same-origin with your local server and gain full unauthenticated API
-    access, including shell execution via the agent). ``localhost``,
-    ``127.0.0.1`` and ``[::1]`` (any port) are always allowed. If you proxy the
-    local server behind a hostname, allow it with
-    ``gptme-server serve --allowed-hosts gptme.local`` (comma-separated, or via
-    ``GPTME_SERVER_ALLOWED_HOSTS``). Validation is skipped when auth is enabled
-    (network binds) or explicitly disabled with ``GPTME_DISABLE_AUTH`` — those
-    operators own their own access control (e.g. an authenticated ingress).
+    **Host-header validation.** Bearer authentication is enabled for loopback
+    and network binds alike. If an operator explicitly disables authentication
+    with ``GPTME_DISABLE_AUTH``, they can still opt into Host-header validation
+    with ``gptme-server serve --allowed-hosts gptme.local`` (comma-separated,
+    or via ``GPTME_SERVER_ALLOWED_HOSTS``).
 
 Self-Hosting with Docker Compose
 --------------------------------
@@ -6960,7 +8587,7 @@ The template runs the server as a dedicated ``gptme`` user, reads secrets from
                            /home/gptme/.local/share/gptme \
                            /home/gptme/.local/state/gptme
 
-    # Secrets file (provider keys, optional GPTME_SERVER_TOKEN), not world-readable
+    # Secrets file (provider keys + GPTME_SERVER_TOKEN), not world-readable
     sudo install -d -m 750 -o gptme -g gptme /etc/gptme
     sudo install -m 640 -o gptme -g gptme /dev/null /etc/gptme/server.env
     sudoedit /etc/gptme/server.env   # add ANTHROPIC_API_KEY=... etc.
@@ -6972,9 +8599,11 @@ The template runs the server as a dedicated ``gptme`` user, reads secrets from
     sudo systemctl enable --now gptme-server
 
 Tail logs with ``journalctl -u gptme-server -f``. Because the unit binds
-``127.0.0.1``, pair it with the nginx reverse proxy above to expose it over TLS;
-on loopback the auth token is optional (set ``GPTME_SERVER_TOKEN`` in the env
-file if you change the bind to a public interface).
+``127.0.0.1``, pair it with the nginx reverse proxy above to expose it over TLS.
+Set ``GPTME_SERVER_TOKEN`` in the env file to a stable secret so clients have a
+persistent credential across restarts. This is **required for persistent
+deployments**: if omitted the server generates a new random token at each startup,
+invalidating any client already configured with the previous token.
 
 Basic Web UI
 ------------
@@ -7076,30 +8705,22 @@ This section describes the security model of gptme-server and the threat vectors
 Authentication Model
 ~~~~~~~~~~~~~~~~~~~~
 
-gptme-server uses a tiered authentication model based on the bind address:
+gptme-server requires bearer authentication for capability-bearing API routes
+regardless of bind address. Loopback is a transport boundary, not an identity
+boundary: another local process must not gain shell and config access merely by
+reaching ``127.0.0.1``. A small set of public routes remain unauthenticated: the
+API root (``/api/v2``), version info (``/api/v2/version``), config metadata
+(``/api/v2/config``), Prometheus metrics (``/api/v0/metrics``), and the API
+documentation at ``/api/docs/``. Set ``GPTME_SERVER_TOKEN`` to a fixed value;
+if unset the server generates one and prints it at startup.
 
-- **Loopback bind** (``127.0.0.1`` / ``localhost`` / ``::1``, the default):
-  Bearer auth is **disabled** — a random token is generated on startup but
-  the server does not require it for API access. The assumption is that any
-  process on the same machine is the legitimate user.
-
-- **Network bind** (``0.0.0.0`` or an external IP): Bearer auth is
-  **enabled** and required for capability-bearing API requests (conversation
-  endpoints, tool execution, config writes). A small set of public routes
-  remain unauthenticated: the API root (``/api/v2``), version info
-  (``/api/v2/version``), config metadata (``/api/v2/config``), Prometheus
-  metrics (``/api/v0/metrics``), and the API documentation at
-  ``/api/docs/``. Set ``GPTME_SERVER_TOKEN``
-  to a fixed value; if unset the server generates one and prints it at
-  startup.
-
-- ``GPTME_DISABLE_AUTH`` overrides both: disables bearer checks entirely
+- ``GPTME_DISABLE_AUTH`` disables bearer checks entirely
   regardless of bind address. Use only behind an authenticated ingress.
 
 .. warning::
 
    An authorized API client (anyone who can reach the server with a valid
-   token, or the local user on a loopback bind) can execute arbitrary shell
+   token) can execute arbitrary shell
    commands through the agent. There is no additional sandboxing at the
    API layer. The security boundary is **access to the server**, not any
    individual endpoint.
@@ -7109,8 +8730,8 @@ gptme-server uses a tiered authentication model based on the bind address:
 Threat Model
 ~~~~~~~~~~~~
 
-The server is hardened against two classes of browser-originating attack that
-apply to the default unauthenticated loopback setup:
+The server is hardened against browser-originating attacks that apply to local
+server access:
 
 **1. Cross-Site Request Forgery (CSRF)**
 
@@ -7123,13 +8744,11 @@ server rejects them as malformed.
 
 **2. DNS Rebinding**
 
-A malicious site can re-resolve its hostname to ``127.0.0.1`` after the
-page loads. That makes the browser consider it *same-origin* with the local
-server, bypassing CORS entirely. The direct mitigation is **Host-header
-validation** (see the note in the :ref:`gptme-webui <server:gptme-webui>`
-section): the server rejects requests whose ``Host`` does not match
-``localhost``, ``127.0.0.1``, ``::1``, the configured bind address, or any
-explicitly allowed hostname (``--allowed-hosts``).
+A malicious site can re-resolve its hostname to ``127.0.0.1`` after the page
+loads and thereby bypass CORS. Bearer authentication still blocks access to
+capability-bearing routes because the page does not possess the token. If an
+operator explicitly disables bearer auth, ``--allowed-hosts`` can add
+Host-header validation as defense in depth.
 
 **What is NOT in scope:**
 
@@ -8026,6 +9645,9 @@ Anthropic and adopted by 26+ tools (Claude Code, OpenAI Codex, Gemini CLI,
 GitHub Copilot, Cursor, and more). Skills authored for gptme work in those
 tools, and vice versa — the same interop play gptme makes for :doc:`MCP <mcp>`.
 
+Looking for something to install? See the :doc:`skills-gallery` — a curated
+selection of community skills from gptme-contrib.
+
 .. note::
 
    Skills are a **special case of lessons** using the Agent Skills open standard format.
@@ -8173,7 +9795,7 @@ Skills are loaded from the following directories (if they exist):
 
 **User-level:**
 
-1. ``~/.config/gptme/skills/`` - gptme native skills
+1. ``~/.config/gptme/skills/`` - gptme native skills (or ``$XDG_CONFIG_HOME/gptme/skills/`` if ``XDG_CONFIG_HOME`` is set)
 2. ``~/.claude/skills/`` - Claude CLI compatibility (share skills with Claude CLI)
 3. ``~/.agents/skills/`` - Cross-platform standard
 
@@ -8199,7 +9821,38 @@ Use the utility CLI to see what the current workspace already knows about:
 
 ``skills list`` shows skill names and descriptions. ``--all`` includes regular
 lessons in the same discovery pass, and ``skills dirs`` shows exactly which
-directories are being scanned.
+directories are being scanned. For the full list of subcommands, run
+``gptme-util skills --help``.
+
+Install a skill from the default ``gptme-contrib`` registry with
+(use ``gptme-util skills dirs`` to see exactly where it lands):
+
+.. code-block:: bash
+
+    gptme-util skills install home-assistant
+
+See the :doc:`skills-gallery` for a curated list of community skills and the
+same install command.
+
+Invoking Skills as Commands
+---------------------------
+
+Every discovered skill is also registered as a slash command, matching how
+Claude Code and Codex expose skills. Inside a chat (CLI, TUI, or server/WebUI),
+``/skill:<name> [args]`` queues the skill body as your next user prompt (with a
+``Skill invoked:`` header) so the assistant acts on it immediately:
+
+.. code-block:: text
+
+    /skill:end                # canonical form, never collides
+    /end                      # bare alias, only if no command/tool is named "end"
+    /skill:review src/app.py  # arguments are passed through
+
+In the skill body, ``$ARGUMENTS`` expands to the full argument string and
+``$ARGUMENTS[N]`` / ``${N}`` to the N-th (0-based) whitespace-separated
+argument (curly braces are required for positional references to avoid
+ambiguity with literal dollar amounts like ``$100`` in skill prose).
+Use ``/skills read <name>`` to view a skill without invoking it.
 
 Creating Skills
 ---------------
@@ -8380,15 +10033,120 @@ Example:
 - Lesson: ``lessons/patterns/testing.md`` - Testing best practices
 - Skill: ``skills/testing-skill.md`` - Bundled pytest utilities
 
+.. toctree::
+   :maxdepth: 1
+
+   skills-gallery
+
 Related
 -------
 
+- :doc:`skills-gallery` - Curated community skills to install
 - :doc:`lessons` - Core knowledge system
 - :doc:`plugins` - For hooks, custom tools, and deep integration
 - :doc:`hooks` - Lifecycle callbacks (plugins only)
 - `Issue #686 <https://github.com/gptme/gptme/issues/686>`_ - Phase 4: Skills Integration
 - `Issue #1170 <https://github.com/gptme/gptme/issues/1170>`_ - Phase 4.2+ roadmap
 - `Claude Skills <https://simonwillison.net/2025/Oct/10/claude-skills/>`_ - Inspiration
+
+
+Skills Gallery
+==============
+
+A curated selection of community skills from the default
+`gptme-contrib <https://github.com/gptme/gptme-contrib>`_ registry. These are
+hand-picked, battle-tested workflows — several run in production agent ops —
+and each one installs with the same ``gptme-util skills install`` command below.
+
+Installing
+----------
+
+Skills from ``gptme-contrib`` install with ``gptme-util skills install``. That
+copies the skill into the primary skills directory (see ``gptme-util skills dirs``),
+which gptme already scans (see :doc:`skills`). The command is the same for every
+skill on this page — only the skill name changes:
+
+.. code-block:: bash
+
+   gptme-util skills install home-assistant
+
+After install, skills auto-load when their name appears in a message — mention
+"home-assistant" and gptme pulls that skill into context.
+
+If you already have ``gptme-contrib`` cloned, install from the local path directly — the
+same ``install`` command accepts a directory path:
+
+.. code-block:: bash
+
+   gptme-util skills install /absolute/path/to/gptme-contrib/skills/home-assistant
+
+Do not add a relative ``gptme-contrib/skills`` path to ``[lessons] dirs``.
+That option is for lesson trees, and a relative path there is resolved against
+the current working directory, not the clone location.
+
+The curated list
+----------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 18 30 20 32
+
+   * - Skill
+     - What it does
+     - Social proof
+     - Source
+   * - **home-assistant**
+     - Query a Home Assistant instance for presence, sensor data, calendar
+       events, and cameras.
+     - Included in the default contrib registry; used in live agent ops.
+     - ``gptme-contrib/skills/home-assistant``
+   * - **gptme-wrapped**
+     - Analyze your gptme conversation history for insights like token usage,
+       costs, model preferences, and usage patterns.
+     - Community-facing showcase skill.
+     - ``gptme-contrib/skills/gptme-wrapped``
+   * - **code-review-helper**
+     - Systematic, multi-lens code review workflow with bundled utilities for
+       structured, pattern-aware feedback.
+     - Proven in production PR review loops.
+     - ``gptme-contrib/skills/code-review-helper``
+   * - **agentic-presentation**
+     - Generate an offline, single-file HTML presentation from structured
+       slide JSON.
+     - Clean, self-contained output artifact.
+     - ``gptme-contrib/skills/agentic-presentation``
+   * - **artifact-publishing**
+     - Publish any HTML artifact (demo, visualization, interactive content) to
+       a static host such as GitHub Pages.
+     - Used for real publishing in production agent stacks.
+     - ``gptme-contrib/skills/artifact-publishing``
+
+For the complete inventory of skills and lessons, see the
+`gptme-contrib skills directory <https://github.com/gptme/gptme-contrib/tree/master/skills>`_.
+
+Why curated?
+------------
+
+gptme skills are powerful but filesystem-scanned — discoverable only if you
+know where to look. This gallery is the human-facing discovery surface that
+points you at the right skill to reach for. It is intentionally small and
+hand-picked rather than an exhaustive registry, so each entry carries a clear
+pitch and social proof.
+
+Contributing
+------------
+
+Have a skill that should be here? Add it to `gptme-contrib
+<https://github.com/gptme/gptme-contrib>`_ and tag it with the ``gptme-skill``
+topic so it is discoverable; community skills with real star/fork counts can be
+added to this gallery alongside the curated defaults.
+
+Related
+-------
+
+- :doc:`skills` - the full skills system, formats, and loading paths
+- :doc:`lessons` - the knowledge system skills extend
+- `gptme-contrib README <https://github.com/gptme/gptme-contrib>`_ - the registry this gallery curates
 
 
 Contributing
@@ -8593,6 +10351,56 @@ Release
 -------
 
 To make a release, simply run ``make release`` and follow the instructions.
+
+Android release signing
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Android releases are signed with a long-lived upload key in the
+``tauri-autoupdater-signing`` GitHub environment. Configure these secrets before
+running a tagged release:
+
+- ``ANDROID_KEYSTORE``: base64-encoded JKS or PKCS12 keystore
+- ``ANDROID_KEY_ALIAS``: alias of the signing key
+- ``ANDROID_KEY_PASSWORD``: password for the key entry
+- ``ANDROID_STORE_PASSWORD``: password for the keystore
+
+Also set the non-secret environment variable ``ANDROID_CERT_SHA256`` to the
+signing certificate's SHA-256 fingerprint. Generate a key and obtain that value
+with:
+
+.. code-block:: bash
+
+   keytool -genkeypair -keystore release.jks -alias gptme-release \
+     -keyalg RSA -keysize 4096 -validity 10000 \
+     -dname "CN=gptme, OU=release, O=gptme, C=SE"
+   keytool -list -v -keystore release.jks -alias gptme-release
+
+Store the keystore and passwords in the project's offline recovery vault before
+provisioning GitHub. Losing this key prevents future releases from retaining the
+same Android signing identity.
+
+The release workflow refuses to upload Android artifacts when any signing value
+is missing, signature verification fails, or the APK certificate does not match
+``ANDROID_CERT_SHA256``. To rotate the key, first archive the old keystore,
+create and back up the replacement, update all four secrets and the fingerprint
+in one maintenance window, then verify the first release's APK with
+``apksigner verify --verbose --print-certs``. Keep the previous public
+fingerprint in the release notes so downstream metadata consumers can recognize
+the intentional identity transition.
+
+This signing strategy is intentionally shared with
+`ActivityWatch/aw-android <https://github.com/ActivityWatch/aw-android>`_
+(see ``scripts/sign_apk.sh`` and ``.github/workflows/build.yml`` there):
+zipalign before signing, apksigner for APKs, jarsigner for AABs, and passwords
+passed via environment variables. When changing the signing approach in either
+project, apply the same change to the other to keep them consistent.
+
+Note that gptme's Android app is built by Tauri (``tauri android build``, a
+generated Gradle project) while aw-android is a native Android app — this does
+not affect signing, since both sign the standard unsigned Gradle outputs after
+the build. Signing deliberately happens in the tag-gated release job rather
+than via a Gradle ``signingConfig`` or Tauri's keystore hooks in the build job,
+so signing secrets are never exposed to PR-triggered builds.
 
 Issue Labels
 ------------
@@ -9157,6 +10965,7 @@ Tool Lifecycle Hooks
 - ``TOOL_EXECUTE_POST``: After executing any tool
 - ``TOOL_TRANSFORM``: Transform tool execution
 - ``TOOL_CONFIRM``: Blocking confirmation/deny decision before execution
+  (see :ref:`confirmation-hooks-and-deny-decisions`)
 
 File Operation Hooks
 ~~~~~~~~~~~~~~~~~~~~~
@@ -9265,16 +11074,83 @@ Hook functions receive different arguments depending on the hook type:
    def session_hook(logdir, workspace, initial_msgs):
        pass
 
-   # Confirmation hooks
+   # Confirmation hooks (see "Confirmation Hooks and Deny Decisions" below)
    def confirm_hook(tool_use, preview=None, workspace=None):
-       return ConfirmationResult.confirm()
+       if is_dangerous(tool_use):
+           return ConfirmationResult.skip("Blocked: destructive path")
+       return None  # fall through to the next confirmation hook
 
-Hook functions can:
+Most hook functions can:
 
 - Return ``None`` (no action)
 - Return a single ``Message`` object
 - Return a generator that yields ``Message`` objects
 - Raise exceptions (which are caught and logged)
+
+``TOOL_CONFIRM`` hooks are the exception: they *return* a
+``ConfirmationResult`` rather than yielding messages. See below.
+
+.. _confirmation-hooks-and-deny-decisions:
+
+Confirmation Hooks and Deny Decisions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``TOOL_CONFIRM`` is the hook for deterministic, below-the-model guardrails: it
+runs before a tool executes and can **deny** execution outright.
+
+.. code-block:: python
+
+   from gptme.hooks import HookType, register_hook
+   from gptme.hooks.confirm import ConfirmationResult
+
+   def block_secret_reads(tool_use, preview=None, workspace=None):
+       """Deny any shell command that reads private keys."""
+       if tool_use.tool == "shell" and "id_rsa" in (tool_use.content or ""):
+           return ConfirmationResult.skip("Blocked: secret file access")
+       return None  # not our decision — fall through
+
+   def register():
+       register_hook(
+           "guardrail.secrets",
+           HookType.TOOL_CONFIRM,
+           block_secret_reads,
+           priority=1000,  # must exceed every built-in confirmation hook
+       )
+
+The three results a confirmation hook can return:
+
+- ``ConfirmationResult.skip(message)`` — **deny**; the tool does not execute, and ``message`` is surfaced as the reason.
+- ``ConfirmationResult.confirm()`` — approve without prompting the user.
+- ``ConfirmationResult.edit(content)`` — execute with modified content.
+
+Returning ``None`` falls through to the next ``TOOL_CONFIRM`` hook in priority
+order; the first non-``None`` result wins. If no hook is registered at all,
+execution is auto-confirmed (autonomous mode).
+
+.. warning::
+
+   A guardrail must out-rank **every** built-in confirmation hook, or it can be
+   pre-empted before it ever runs. The built-ins register at:
+
+   - ``server_confirm`` — priority **100**
+   - ``cli_confirm`` — priority **0**
+   - ``auto_confirm`` — priority **0**
+
+   Hooks sort by ``(priority, name)`` **descending**, so equal priority is broken
+   by name in *reverse* alphabetical order — not by registration order. A
+   guardrail named ``guardrail.secrets`` registered at priority ``100`` therefore
+   loses to ``server_confirm`` (``"s" > "g"``), which returns a non-``None``
+   result and prevents the guardrail from running at all. Pick a priority
+   strictly greater than 100 (the example uses ``1000``) rather than relying on
+   the name tie-break.
+
+.. note::
+
+   ``--no-confirm``/``-y`` only stops gptme from registering its *interactive*
+   confirmation hooks (``cli_confirm``/``server_confirm``). A plugin-registered
+   ``TOOL_CONFIRM`` hook is still called, so a ``skip`` result keeps blocking
+   execution in autonomous runs. This is what makes the hook usable as a real
+   guardrail rather than a prompt.
 
 Managing Hooks
 --------------
@@ -9782,7 +11658,7 @@ Create individual hook modules without ``hooks/__init__.py``:
        """Register hooks from this module."""
        register_hook(
            "my_plugin.log_tool",
-           HookType.TOOL_PRE_EXECUTE,
+           HookType.TOOL_EXECUTE_PRE,
            log_tool_execution,
            priority=0
        )
@@ -9794,10 +11670,11 @@ Available hook types:
 
 - ``SESSION_START`` - Called at session start
 - ``SESSION_END`` - Called at session end
-- ``TOOL_PRE_EXECUTE`` - Before tool execution
-- ``TOOL_POST_EXECUTE`` - After tool execution
-- ``FILE_PRE_SAVE`` - Before saving a file
-- ``FILE_POST_SAVE`` - After saving a file
+- ``TOOL_EXECUTE_PRE`` - Before tool execution
+- ``TOOL_EXECUTE_POST`` - After tool execution
+- ``TOOL_CONFIRM`` - Blocking confirmation/deny decision before execution
+- ``FILE_SAVE_PRE`` - Before saving a file
+- ``FILE_SAVE_POST`` - After saving a file
 - ``GENERATION_PRE`` - Before generating response
 - ``GENERATION_POST`` - After generating response
 - And more (see ``gptme.hooks.HookType``)
@@ -9912,8 +11789,70 @@ A complete example of a plugin that logs tool executions:
        yield
 
    def register():
-       register_hook("tool_logger.pre", HookType.TOOL_PRE_EXECUTE, log_tool_pre)
-       register_hook("tool_logger.post", HookType.TOOL_POST_EXECUTE, log_tool_post)
+       register_hook("tool_logger.pre", HookType.TOOL_EXECUTE_PRE, log_tool_pre)
+       register_hook("tool_logger.post", HookType.TOOL_EXECUTE_POST, log_tool_post)
+
+Example: Guardrail Plugin
+-------------------------
+
+A complete example of a plugin that blocks dangerous shell commands using the
+``TOOL_CONFIRM`` hook. ``TOOL_CONFIRM`` is the canonical hook for deny decisions
+— returning ``ConfirmationResult.skip()`` prevents the tool from executing at all.
+This is the right hook for deterministic, below-the-model guardrails.
+
+.. code-block:: python
+
+   # my_guardrail/hooks/shell_guard.py
+   import re
+   from gptme.hooks import HookType, register_hook
+   from gptme.hooks.confirm import ConfirmationResult
+   import logging
+
+   logger = logging.getLogger(__name__)
+
+   # Patterns to block regardless of prompt justification
+   _DESTRUCTIVE = re.compile(
+       r"rm\s+-[a-z]*(?:rf|fr)[a-z]*|"  # rm -rf/-fr/-Rf/-RF variants
+       r"DROP\s+TABLE|"            # SQL destructive
+       r"chmod\s+-R\s+0{3}|"      # remove all permissions
+       r":\s*\(\s*\)\s*\{.*\}\s*;" # fork bomb
+       , re.IGNORECASE
+   )
+
+   def shell_guard(tool_use, preview=None, workspace=None):
+       """Block destructive shell commands before execution."""
+       if tool_use.tool != "shell":
+           return None  # Not a shell tool — pass to next hook
+
+       # Shell commands are passed as content, not args
+       command = tool_use.content or ""
+       if _DESTRUCTIVE.search(command):
+           logger.warning("Guardrail blocked: %s", command)
+           return ConfirmationResult.skip(
+               f"Blocked by guardrail: destructive pattern detected in: {command!r}"
+           )
+
+       return None  # Not blocked — pass to next hook (e.g. user confirmation)
+
+   def register():
+       register_hook(
+           "my_guardrail.shell_guard",
+           HookType.TOOL_CONFIRM,
+           shell_guard,
+           priority=200,  # Must be > 100 to run before server_confirm
+       )
+
+``TOOL_CONFIRM`` hooks receive ``(tool_use, preview, workspace)`` and should return
+one of:
+
+- ``ConfirmationResult.skip(reason)`` — deny execution (blocks the tool call)
+- ``None`` — no opinion; pass to the next hook (e.g. the interactive user prompt)
+- ``ConfirmationResult.confirm()`` — explicitly auto-confirm without prompting
+
+A guardrail hook should return ``None`` for operations it does not want to block so
+that lower-priority hooks — including the normal user confirmation prompt — can still
+run. Returning ``confirm()`` from a high-priority hook bypasses those prompts
+entirely. The hook is **blocking** — gptme waits for the result before proceeding.
 
 Example: Weather Plugin
 -----------------------
@@ -10193,6 +12132,403 @@ Troubleshooting
 - Check that the exported object is a ``GptmePlugin`` instance or a callable returning one
 
 
+====================
+Context Compression
+====================
+
+gptme provides a pluggable context compression system that allows conversations to be compacted when they grow too large. This enables long-running sessions while keeping context windows manageable.
+
+.. contents:: Table of Contents
+   :local:
+   :depth: 2
+
+Overview
+========
+
+The context compression system has two main components:
+
+1. **Automatic Compaction** - Triggered when conversations exceed token limits or contain massive tool results
+2. **Plugin Interface** - Allows third-party packages to provide custom compression strategies
+
+Built-in Compression Strategy
+==============================
+
+By default, gptme uses a 3-phase compression algorithm:
+
+1. **Reasoning Stripping** - Remove reasoning tags from older messages (age-based)
+2. **Tool Result Truncation** - Truncate largest tool results first
+3. **Extractive Compression** - Summarize long assistant messages
+
+This approach intelligently prioritizes the largest messages for removal to achieve target reduction with minimal information loss.
+
+Using the Default Compressor
+=============================
+
+When you enable the ``autocompact`` tool, automatic compression is triggered via a post-turn hook:
+
+.. code-block:: bash
+
+    gptme --tool autocompact
+
+You can also manually compact a conversation:
+
+.. code-block:: text
+
+    /compact           # Rule-based trim (default)
+    /compact trim      # Same as above
+    /compact summarize # LLM-powered summarization
+
+Two strategies are available:
+
+- **trim** (default) — rule-based: strips old reasoning blocks, truncates massive tool
+  results, and compresses long assistant messages. Fast and deterministic; no LLM call.
+  If savings would be low, gptme will suggest ``/compact summarize`` instead.
+
+- **summarize** — LLM-powered: asks the model to produce a ``RESUME.md`` capturing
+  key decisions, open tasks, and relevant file paths, then starts a fresh context
+  from that summary. More thorough but requires a model call and restarts context.
+
+.. deprecated::
+   ``/compact auto`` and ``/compact resume`` are deprecated aliases for ``trim`` and
+   ``summarize`` respectively. They still work but emit a deprecation warning.
+
+Custom Compression Providers (Plugin Interface)
+===============================================
+
+The plugin interface allows third-party packages to ship custom compression strategies as pip packages. This is useful for:
+
+- Domain-specific compaction strategies (e.g., code-aware, markdown-aware)
+- Experimental compression algorithms
+- Integration with external summarization services
+- Specialized handling for specific tool outputs
+
+Implementing a Custom Provider
+==============================
+
+Create a class that implements the ``ContextProvider`` abstract base class:
+
+.. code-block:: python
+
+    from gptme.tools.autocompact.context_provider import (
+        ContextProvider, CompressionConfig, CompactionResult,
+    )
+    from gptme.message import Message
+
+    class MyContextProvider(ContextProvider):
+        """Custom context compression provider."""
+
+        @property
+        def name(self) -> str:
+            """Return a unique identifier for this provider."""
+            return "my-compressor"
+
+        def should_compress(
+            self, messages: list[Message], config: CompressionConfig
+        ) -> bool:
+            """Decide whether compression should be applied."""
+            # Your logic here
+            return len(messages) > 50
+
+        def compress(
+            self, messages: list[Message], config: CompressionConfig
+        ) -> CompactionResult:
+            """Apply compression and return a CompactionResult."""
+            # Your compression logic here — return a CompactionResult, not a generator
+            source_digest = self._compute_digest(messages)
+            compacted = messages[-50:]  # keep last 50 messages
+            return CompactionResult(
+                messages=compacted,
+                source_digest=source_digest,
+            )
+
+Provider Interface
+==================
+
+ContextProvider ABC
+-------------------
+
+All custom providers must inherit from ``gptme.tools.autocompact.context_provider.ContextProvider`` and implement:
+
+``name`` property
+~~~~~~~~~~~~~~~~~
+
+Returns a unique identifier for this provider (e.g., ``"my-compressor"``).
+
+.. code-block:: python
+
+    @property
+    def name(self) -> str:
+        return "my-compressor"
+
+``should_compress()`` method
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Decides whether compression should be applied based on message list and configuration.
+
+.. code-block:: python
+
+    def should_compress(
+        self, messages: list[Message], config: CompressionConfig
+    ) -> bool:
+        """
+        Args:
+            messages: List of messages in the conversation
+            config: Compression configuration (see CompressionConfig below)
+
+        Returns:
+            True if compression should be applied, False otherwise
+        """
+
+This allows intelligent decisions: some providers might always compress when close to the limit, others only when detecting redundancy exceeds a threshold.
+
+``compress()`` method
+~~~~~~~~~~~~~~~~~~~~~
+
+Applies compression and returns a :class:`~gptme.tools.autocompact.context_provider.CompactionResult`.
+
+.. code-block:: python
+
+    def compress(
+        self, messages: list[Message], config: CompressionConfig
+    ) -> CompactionResult:
+        """
+        Args:
+            messages: List of messages to compress
+            config: Compression configuration
+
+        Returns:
+            CompactionResult: Contains the compacted message list and
+                metadata (source_digest) for cache invalidation.
+
+        Note:
+            - Preserve message structure (role, timestamp, tool_calls, etc.)
+            - Do NOT return a generator — the caller accesses .messages directly
+            - May optionally set covered_through for partial-context tracking
+        """
+
+CompressionConfig Dataclass
+----------------------------
+
+Configuration passed to compression methods:
+
+.. code-block:: python
+
+    @dataclass
+    class CompressionConfig:
+        limit: int | None = None
+            # Target token limit. None disables automatic should_compress()
+            # checks (DefaultContextProvider.should_compress returns False).
+            # Custom providers may handle None differently.
+
+        max_tool_result_tokens: int = 2000
+            # Maximum tokens allowed in a tool result before removal
+
+        reasoning_strip_age_threshold: int = 5
+            # Strip reasoning from messages older than N positions
+
+        logdir: Path | None = None
+            # Path to save removed outputs for recovery
+
+        extra_config: dict[str, Any] | None = None
+            # Provider-specific configuration
+
+Registering Your Provider
+===========================
+
+Entry Points (Recommended)
+--------------------------
+
+Add your provider to your package's ``pyproject.toml``:
+
+.. code-block:: toml
+
+    [project.entry-points."gptme.context_providers"]
+    my-compressor = "my_package.providers:MyContextProvider"
+
+When gptme starts, it will automatically discover and load your provider via entry-points.
+
+Programmatic Registration
+--------------------------
+
+You can also register providers at runtime:
+
+.. code-block:: python
+
+    from gptme.tools.autocompact.context_provider import register_provider
+    from my_package.providers import MyContextProvider
+
+    register_provider("my-compressor", MyContextProvider)
+
+Using a Custom Provider
+=======================
+
+Once registered, use your provider by name:
+
+.. code-block:: python
+
+    from gptme.tools.autocompact.context_provider import get_context_provider
+
+    provider = get_context_provider("my-compressor")
+    config = CompressionConfig(limit=4000)
+
+    # Check if compression is needed
+    if provider.should_compress(messages, config):
+        result = provider.compress(messages, config)
+        compacted = result.messages  # CompactionResult.messages is a list[Message]
+
+Discovering Available Providers
+-------------------------------
+
+List all registered providers:
+
+.. code-block:: python
+
+    from gptme.tools.autocompact.context_provider import list_providers
+
+    providers = list_providers()
+    # Returns: ['default', 'my-compressor', ...]
+
+Design Considerations
+=====================
+
+Message Integrity
+-----------------
+
+Compression implementations must preserve:
+
+- **Message Role**: Keep assistant/user/system roles intact
+- **Message Order**: Maintain original chronological order
+- **Timestamps**: Don't modify message timestamps
+- **Tool References**: Preserve tool_use_id and tool_result associations
+
+This ensures the compacted conversation remains valid for continuation.
+
+Recovery Strategy
+-----------------
+
+For significant compression, consider adding recovery references:
+
+.. code-block:: python
+
+    # When removing or summarizing messages, optionally record:
+    # - Byte ranges in the original conversation.jsonl
+    # - A `sourceDigest` hash for verification
+    # - Coverage metadata (how many events/turns were covered)
+
+This allows recovery of the full context if needed later.
+
+Performance
+-----------
+
+The ``compress`` method must return a :class:`~gptme.tools.autocompact.context_provider.CompactionResult`
+(not a generator or a bare list). When building the result, process messages
+lazily to avoid allocating unnecessary copies:
+
+.. code-block:: python
+
+    def compress(self, messages, config) -> CompactionResult:
+        # Build compacted list efficiently with a comprehension or generator expression
+        compacted = [self._maybe_trim(m) for m in messages]
+        return CompactionResult(
+            messages=compacted,
+            source_digest=self._compute_digest(messages),
+        )
+
+Examples
+========
+
+Code-Aware Compression
+----------------------
+
+Example provider that's more aggressive with code comments:
+
+.. code-block:: python
+
+    from gptme.tools.autocompact.context_provider import (
+        ContextProvider, CompressionConfig, CompactionResult,
+    )
+
+    class CodeAwareProvider(ContextProvider):
+        @property
+        def name(self) -> str:
+            return "code-aware"
+
+        def should_compress(self, messages, config) -> bool:
+            # Only compress when close to limit
+            tokens = self.estimate_tokens(messages)
+            limit = config.limit or 4000
+            return tokens > int(0.9 * limit)
+
+        def compress(self, messages, config) -> CompactionResult:
+            compacted = [
+                self._compress_code_message(msg, config)
+                if msg.role == "assistant" and "```" in msg.content
+                else msg
+                for msg in messages
+            ]
+            return CompactionResult(
+                messages=compacted,
+                source_digest=self._compute_digest(messages),
+            )
+
+Statistical Compression
+-----------------------
+
+Provider that uses redundancy detection:
+
+.. code-block:: python
+
+    class StatisticalProvider(ContextProvider):
+        @property
+        def name(self) -> str:
+            return "statistical"
+
+        def should_compress(self, messages, config) -> bool:
+            # Analyze redundancy before deciding
+            redundancy = self._compute_redundancy_score(messages)
+            return redundancy > 0.3  # 30% redundant content
+
+        def compress(self, messages, config) -> CompactionResult:
+            # Remove duplicate patterns, extract key information
+            compacted = list(self._extract_unique_content(messages))
+            return CompactionResult(
+                messages=compacted,
+                source_digest=self._compute_digest(messages),
+            )
+
+Related
+=======
+
+- ``autocompact`` tool - Automatic compression tool (see :doc:`commands`)
+- ``gptme.tools.autocompact.context_provider`` - Provider interface module
+- :py:class:`gptme.message.Message` - Message class reference
+
+API Reference
+=============
+
+.. autoclass:: gptme.tools.autocompact.context_provider.ContextProvider
+   :members:
+   :undoc-members:
+
+.. autoclass:: gptme.tools.autocompact.context_provider.DefaultContextProvider
+   :members:
+   :undoc-members:
+
+.. autoclass:: gptme.tools.autocompact.context_provider.CompactionResult
+   :members:
+   :undoc-members:
+
+.. autoclass:: gptme.tools.autocompact.context_provider.CompressionConfig
+   :members:
+   :undoc-members:
+
+.. autofunction:: gptme.tools.autocompact.context_provider.get_context_provider
+
+.. autofunction:: gptme.tools.autocompact.context_provider.register_provider
+
+.. autofunction:: gptme.tools.autocompact.context_provider.list_providers
+
+
 Prompts
 =======
 
@@ -10303,7 +12639,7 @@ Decent alternatives include:
 - DeepSeek V3 (``deepseek/deepseek-chat``)
 - DeepSeek R1 (``deepseek/deepseek-reasoner``)
 
-Note that some models may perform better or worse with different ``--tool-format`` options (``markdown``, ``xml``, or ``tool`` for native tool-calling).
+Note that some models may perform better or worse with different ``--tool-format`` options (``markdown``, ``xml``, or ``tool`` for native tool-calling). See :doc:`tool-formats` for what each format does and how to choose one.
 
 Note that many providers on OpenRouter have poor performance and reliability, so be sure to test your chosen model/provider combination before committing to it. This is especially true for open weight models which any provider can host at any quality. You can choose a specific provider by appending with ``:provider``, e.g. ``openrouter/qwen/qwen3-coder:alibaba/opensource``.
 
@@ -10322,7 +12658,7 @@ The table below shows pass rates across our eval suites for each model (best too
 
 **Notes:**
 
-- *Format* shows the best-performing ``--tool-format`` for each model.
+- *Format* shows the best-performing ``--tool-format`` for each model (see :doc:`tool-formats`).
 - *Basic* tests cover fundamental tool use (file I/O, shell, git, Python).
 - *Practical* tests cover real-world programming tasks (APIs, data processing, refactoring).
 - Models with fewer than 4 tests are excluded.
@@ -11641,6 +13977,194 @@ def server_elicit_hook(request: ElicitationRequest) -> ElicitationResponse | Non
 | MCP bridge | 🚧 (planned) | ? | ? | ? |
 
 
+# Design: Programmatic Tool Calling (PTC) Interface
+
+**Date**: 2026-08-13
+**Status**: Stable — this documents the existing architecture
+
+## Summary
+
+gptme's primary tool interface is **Programmatic Tool Calling (PTC)**:
+the model outputs *executable code* in fenced code blocks, and gptme runs it
+directly via Python (IPython) or the shell. For the default `markdown` and `xml`
+formats, no JSON schemas are handed to the model and no JSON-structured tool-call
+responses are parsed.
+
+gptme also supports a **provider-native tool mode** (the `"tool"` format) for
+OpenAI and Anthropic APIs. In this mode, `ToolSpec` parameters are converted to
+JSON-schema tool definitions and sent to the provider; the provider returns
+structured tool calls which gptme parses before dispatching to `ToolSpec.execute`.
+This path trades the context-rot resilience of PTC for compatibility with
+provider-side tool routing.
+
+This matters because gptme's long-running autonomous sessions accumulate 50–200 tool
+calls in a single conversation. JSON-schema tool definitions are verbose and repetitive
+in context; accumulated provider-native tool history crowds out the actual task. PTC
+code blocks are shorter, more compositional, and less sensitive to context length.
+gptme's markdown-first design is architecturally positioned to remain stable in the
+long-context regime where JSON-schema approaches are most likely to degrade.
+
+---
+
+## Dispatch Paths
+
+### Primary: Markdown code blocks (PTC)
+
+The default and primary tool format is `"markdown"`. The model writes:
+
+````
+```python
+print("hello")
+```
+````
+
+gptme parses the fenced code block, identifies the language tag as a tool name
+(`python`, `shell`, `save`, `patch`, …), and calls the registered `ToolSpec.execute`
+function with the block content as `code`. For `python`, this runs the code via
+IPython's `run_cell()`; for `shell`, via `subprocess.Popen` with a stateful bash
+shell. **There is no JSON parsing in this path.** The content is code; it runs as
+code.
+
+### Secondary: XML code blocks
+
+The `"xml"` format wraps the same code in XML tags:
+
+```xml
+<tool-use>
+<python>
+print("hello")
+</python>
+</tool-use>
+```
+
+Dispatch is identical — `tool.execute(content, args, kwargs)` — with the code block
+content passing straight through. Still PTC.
+
+### Tertiary: "tool" format (provider-native tool mode)
+
+The `"tool"` format (`@name(id): {...}`) supports providers that expose a native
+tool-use API (e.g., OpenAI Responses API, Anthropic tool use).
+
+**This is the one path where JSON schemas are sent to the model and structured
+tool-call responses are parsed.** The implementation spans two layers:
+
+- **`gptme/llm/`** (schema → provider): `_spec2tool` in `llm_openai.py` /
+  `llm_anthropic.py` converts each `ToolSpec`'s `.parameters` to a JSON-schema
+  tool definition and sends it to the provider alongside the conversation.
+- **`gptme/tools/base.py`** (provider → dispatch): `ToolUse.iter_from_content`
+  with `active_format == "tool"` parses the `@name(id): {...}` response using
+  `json_repair.loads`, extracts `kwargs`, and yields a `ToolUse` that then calls
+  `ToolSpec.execute`.
+
+The `ToolSpec.execute` interface itself is code-based in all formats; the JSON
+layer is the serialisation envelope for provider-native calls, handled in
+`gptme/llm/` (outbound schemas) and `gptme/tools/base.py` (inbound argument
+parsing).
+
+### MCP adapter
+
+`gptme/tools/mcp_adapter.py` speaks the MCP protocol, which uses JSON Schema to
+describe external MCP server tools. This schema is used to **generate human-readable
+instructions** for the model (not to gate dispatch) and to validate MCP server
+responses. gptme's own tools are never dispatched via JSON schema.
+
+---
+
+## Audit: No JSON-Schema Dispatch Paths in `gptme/tools/`
+
+Audit run 2026-08-16, commit `66057c6e8`, all Python files recursively under
+`gptme/tools/`.
+
+```bash
+grep -r "json\|schema\|Json\|Schema" gptme/tools/ \
+  --include="*.py" | grep -v __pycache__ | grep -v test
+```
+
+**Findings by file**:
+
+| File | JSON usage | Dispatch path? |
+|------|-----------|----------------|
+| `base.py` | `_to_json`/`_to_params` serialisation + `ToolUse.iter_from_content` "tool"-format JSON parser (`json_repair.loads`) | ⚠️ Part of provider-native path — parses `@name(id): {...}` responses |
+| `mcp_adapter.py` | MCP protocol JSON schema for external server tools | ❌ Not gptme tool dispatch |
+| `mcp.py` | MCP protocol JSON parsing for server commands and arguments | ❌ Not dispatch |
+| `patch_anchored.py` | JSON array of edit operations (tool's own content format) | ❌ Not dispatch |
+| `patch_many.py` | JSON array of edit operations (multi-patch content format) | ❌ Not dispatch |
+| `elicit.py` | JSON for form-spec parsing (`json.loads(code)`) and response formatting | ❌ Not dispatch — parses the tool's own content, not tool selection |
+| `form.py` | JSON for form result output formatting | ❌ Not dispatch |
+| `gh.py` | JSON parsing of `gh` CLI output (PR details, check runs) | ❌ Not dispatch |
+| `computer.py`, `computer_semantic.py` | JSON for action telemetry and semantic-target payloads | ❌ Not dispatch |
+| `pruner.py` | JSON parsing of pruner payload in message content | ❌ Not dispatch |
+| `autocompact/engine.py` | Conversation JSONL path and message-position bookkeeping | ❌ Not dispatch |
+| `subagent/api.py` | JSONL cancellation protocol and structured-output schema forwarding | ❌ Not dispatch |
+| `subagent/batch.py` | Structured-output JSON decoding and optional Pydantic result validation | ❌ Not dispatch — subagent result content |
+| `subagent/control.py`, `subagent/execution.py` | JSONL control/progress protocol and structured-output plumbing | ❌ Not dispatch |
+| `subagent/hooks.py`, `subagent/types.py` | JSON Schema prompt generation plus JSON syntax normalization for structured subagent results | ❌ Not dispatch — validates the subagent's result content |
+| `vent.py` | JSONL output to friction ledger | ❌ Not dispatch |
+| `progress.py` | JSONL output to progress log | ❌ Not dispatch |
+| `shell.py` | JSONL context-savings log | ❌ Not dispatch |
+| `restart.py` | `--output-schema` CLI flag for structured subagent output | ❌ Not tool dispatch |
+| `chats.py`, `rag.py` | JSONL conversation file reading | ❌ Not dispatch |
+| `_browser_playwright.py`, `browser.py`, `_browser_thread.py` | Browser session state JSON | ❌ Not dispatch |
+
+**Verdict**: Two distinct things are worth separating here:
+
+1. **Schema-definition dispatch** (using a JSON schema to *select* which tool to invoke):
+   never occurs in any path. The `@name(id): {...}` format in the provider-native path
+   names the tool directly; the schema is only sent *outbound* to the provider to help
+   it structure its response, not used inbound to route calls.
+
+2. **JSON argument parsing after tool selection**: `base.py` **does** parse JSON from
+   provider responses via `ToolUse.iter_from_content` with `active_format == "tool"`.
+   This `json_repair.loads` call is the trust boundary for untrusted provider data —
+   **security reviewers should treat this as in-scope** even though it is not schema-guided
+   dispatch.
+
+For markdown and XML formats, `ToolSpec.execute(code, args, kwargs)` receives raw code block
+content with no JSON parsing at any layer. The ⚠️ on `base.py` above applies only to the
+`"tool"` format (provider-native mode); the outbound schema half lives in `gptme/llm/`.
+
+---
+
+## Why PTC Favours Long Context (Context Rot Argument)
+
+JSON-schema tool calling sends the full parameter schema for every available tool on
+every turn. In a long autonomous session this adds significant token overhead that
+repeats with every message. PTC code blocks carry no per-turn schema payload: the
+model writes code, gptme runs it — the only context each block occupies is the code
+itself.
+
+The concern compounds under **context rot**: when prior tool-call history accumulates
+(50–200 entries in a typical autonomous run), JSON-schema responses grow proportionally
+because each prior turn's structured `tool_call` / `tool_result` pair is preserved in
+the conversation. PTC history is just markdown code blocks and their output — shorter,
+compositional, and no more repetitive than the code itself.
+
+**Empirical evidence**: A 2026 benchmark study, arXiv:2608.06370v1 (*"The Bitter
+Lesson of Tool Calling"*), compared PTC with native JSON tool calling across 14
+models on BFCL v4. PTC matched or exceeded JSON on 11/14 models, with the GPT-5.6
+family improving by up to 10.6 percentage points. In a separate context-flooding
+ablation (31 entries per condition), the authors expanded the available tool set
+from only task-relevant schemas to 128 schemas with unrelated decoys. Mean JSON
+accuracy fell 2.3 percentage points, while mean PTC accuracy rose 5.5 points.
+
+That ablation tests schema flooding in a single benchmark query, not accumulated
+multi-turn history, so it does not directly measure gptme's 50–200-call sessions.
+It supports the narrower claim that PTC is robust when irrelevant tool definitions
+inflate the context; the extrapolation to long-running sessions above remains an
+architectural rationale rather than a measured result.
+
+---
+
+## References
+
+- `gptme/tools/base.py` — `ToolSpec`, `ToolUse`, dispatch paths, `ToolFormat`
+- `gptme/tools/python.py` — IPython execution backend
+- `gptme/tools/shell.py` — subprocess bash execution backend
+- `gptme/tools/mcp_adapter.py` — MCP protocol bridge (external tool JSON schema)
+- [arXiv:2608.06370v1](https://arxiv.org/abs/2608.06370v1) — *"The Bitter Lesson of Tool Calling"* (August 2026): BFCL v4 benchmark across 14 models; its context-flooding ablation compares task-relevant schemas with 128 schemas containing unrelated decoys
+- Issue [#3540](https://github.com/gptme/gptme/issues/3540) — audit request
+
+
 Alternatives
 ============
 
@@ -12608,6 +15132,7 @@ The changelog is also available in the repository releases <https://github.com/g
 .. toctree::
    :maxdepth: 1
 
+   releases/v0.33.0.md
    releases/v0.32.1.md
    releases/v0.32.0.md
    releases/v0.31.0.md
@@ -12662,6 +15187,255 @@ The changelog is also available in the repository releases <https://github.com/g
    releases/v0.2.2.md
    releases/v0.2.1.md
    releases/v0.1.1.md
+
+
+# v0.33.0
+
+These are the release notes for gptme version v0.33.0.
+
+## Contributors
+
+Thanks to everyone who contributed to this release:
+
+@AlexFerroni02, @eeshsaxena, @erikbjare, @illiand, @sujeito-operator, @TimeToBuildBob
+
+## Changelog
+
+Changes since v0.32.1:
+
+## 📦 gptme
+
+### ✨ Features (76)
+
+ - feat(autocompact): add keep_head to protect task context from compaction ([#3567](https://github.com/gptme/gptme/issues/3567)) ([`ab731347b`](https://github.com/gptme/gptme/commit/ab731347b))
+ - feat(prompts): Add code editing strategy guidance for improved model performance ([#3530](https://github.com/gptme/gptme/issues/3530)) ([`8fb767452`](https://github.com/gptme/gptme/commit/8fb767452))
+ - feat(cli): fatal error envelope + exit taxonomy for non-interactive mode ([#3568](https://github.com/gptme/gptme/issues/3568)) ([`3fb862dcc`](https://github.com/gptme/gptme/commit/3fb862dcc))
+ - feat(prompts): end responses with a concrete next step ([#3559](https://github.com/gptme/gptme/issues/3559)) ([`a93bf261f`](https://github.com/gptme/gptme/commit/a93bf261f))
+ - feat(tools): add read-only audit preset ([#3543](https://github.com/gptme/gptme/issues/3543)) ([`7adb7f765`](https://github.com/gptme/gptme/commit/7adb7f765))
+ - feat(cli): add `gptme explain` for offline concept answers ([#3542](https://github.com/gptme/gptme/issues/3542)) ([`bb48ab5be`](https://github.com/gptme/gptme/commit/bb48ab5be))
+ - feat(cli): add --version-short output ([#3536](https://github.com/gptme/gptme/issues/3536)) ([`bff711a52`](https://github.com/gptme/gptme/commit/bff711a52))
+ - feat(models): refresh MiniMax plugin registry ([#3533](https://github.com/gptme/gptme/issues/3533)) ([`eb0dae860`](https://github.com/gptme/gptme/commit/eb0dae860))
+ - feat(cli): add JSON output to status command ([#3528](https://github.com/gptme/gptme/issues/3528)) ([`f232004be`](https://github.com/gptme/gptme/commit/f232004be))
+ - feat(tools/hashline_edit): 3-way merge recovery when file changes between read and edit ([#3476](https://github.com/gptme/gptme/issues/3476) Phase 2) ([#3520](https://github.com/gptme/gptme/issues/3520)) ([`c3bdfb46d`](https://github.com/gptme/gptme/commit/c3bdfb46d))
+ - feat(attestation): Phase 1 registry bridge - wire model-capability-registry ([#3525](https://github.com/gptme/gptme/issues/3525)) ([`fce2fbe69`](https://github.com/gptme/gptme/commit/fce2fbe69))
+ - feat(tools/hashline_edit): add register operations (CUT @name / PUT @name) ([#3497](https://github.com/gptme/gptme/issues/3497)) ([`cbce4062e`](https://github.com/gptme/gptme/commit/cbce4062e))
+ - feat(review): make reviewer toolset configurable with a read-only preset ([#3512](https://github.com/gptme/gptme/issues/3512)) ([`6b3fde6fc`](https://github.com/gptme/gptme/commit/6b3fde6fc))
+ - feat(lessons): Stage 1 shadow logging — policy_class/policy_version in dropout logs ([#3455](https://github.com/gptme/gptme/issues/3455)) ([`bd99a0944`](https://github.com/gptme/gptme/commit/bd99a0944))
+ - feat(review): add `gptme-util review pr` subcommand — complete the unified review pipeline (gptme[#3442](https://github.com/gptme/gptme/issues/3442)) ([#3462](https://github.com/gptme/gptme/issues/3462)) ([`374f94304`](https://github.com/gptme/gptme/commit/374f94304))
+ - feat(llm/webui): capture and display resolved OpenRouter subprovider in message metadata ([#3486](https://github.com/gptme/gptme/issues/3486)) ([`34e8848a8`](https://github.com/gptme/gptme/commit/34e8848a8))
+ - feat(tools/hashline_edit): add PUT N*: block-aware replace ([#3476](https://github.com/gptme/gptme/issues/3476) Phase 1 remainder) ([#3480](https://github.com/gptme/gptme/issues/3480)) ([`db8fe3881`](https://github.com/gptme/gptme/commit/db8fe3881))
+ - feat(webui): add trajectory copy commands ([#3491](https://github.com/gptme/gptme/issues/3491)) ([`7c29b4177`](https://github.com/gptme/gptme/commit/7c29b4177))
+ - feat(webui): add copy trajectory as markdown with detail level toggles ([#3485](https://github.com/gptme/gptme/issues/3485)) ([`786f78642`](https://github.com/gptme/gptme/commit/786f78642))
+ - feat(review): add --trusted-reviewer guard for artifact mode ([#3470](https://github.com/gptme/gptme/issues/3470)) ([`702d9c219`](https://github.com/gptme/gptme/commit/702d9c219))
+ - feat(tools): hashline-inspired snapshot-anchored edit format ([#3477](https://github.com/gptme/gptme/issues/3477)) ([`8fcff6ae8`](https://github.com/gptme/gptme/commit/8fcff6ae8))
+ - feat(webui/model-picker): add free-text custom model ID entry ([#3466](https://github.com/gptme/gptme/issues/3466)) ([`f5c6c8be5`](https://github.com/gptme/gptme/commit/f5c6c8be5))
+ - feat(review): artifact mode + structured handoff for review-watch ([#3442](https://github.com/gptme/gptme/issues/3442)) ([#3449](https://github.com/gptme/gptme/issues/3449)) ([`9130a018c`](https://github.com/gptme/gptme/commit/9130a018c))
+ - feat(cli): add global stats for CLI subcommand for usage & cost analytics ([#3400](https://github.com/gptme/gptme/issues/3400)) ([`8d88b862e`](https://github.com/gptme/gptme/commit/8d88b862e))
+ - feat(review): converge review-watch and shared review pipeline ([#3442](https://github.com/gptme/gptme/issues/3442)) ([#3443](https://github.com/gptme/gptme/issues/3443)) ([`4a21419d6`](https://github.com/gptme/gptme/commit/4a21419d6))
+ - feat(timings): persist per-step timing breakdown in session records ([#3436](https://github.com/gptme/gptme/issues/3436)) ([`b0adaa7c7`](https://github.com/gptme/gptme/commit/b0adaa7c7))
+ - feat(util): add review-watch command for autonomous PR review iteration ([#3437](https://github.com/gptme/gptme/issues/3437)) ([`81342c4e6`](https://github.com/gptme/gptme/commit/81342c4e6))
+ - feat(browser): support custom executable path in GPTME_BROWSER_ENGINE ([#3439](https://github.com/gptme/gptme/issues/3439)) ([`08d61d970`](https://github.com/gptme/gptme/commit/08d61d970))
+ - feat(cli): add 'gptme providers add' command for interactive custom provider setup ([#3438](https://github.com/gptme/gptme/issues/3438)) ([`542f64035`](https://github.com/gptme/gptme/commit/542f64035))
+ - feat(android): sign APK/AAB and verify signature before release upload ([#3409](https://github.com/gptme/gptme/issues/3409)) ([`55ac56712`](https://github.com/gptme/gptme/commit/55ac56712))
+ - feat(cost): add session budget warnings ([#3423](https://github.com/gptme/gptme/issues/3423)) ([`be1e0b4f8`](https://github.com/gptme/gptme/commit/be1e0b4f8))
+ - feat(attestation): persist ModelSelectionTrace to logdir and embed in attestations ([#3424](https://github.com/gptme/gptme/issues/3424)) ([`5721cd0a7`](https://github.com/gptme/gptme/commit/5721cd0a7))
+ - feat(site): add built-with-gptme badge ([#3410](https://github.com/gptme/gptme/issues/3410)) ([`3e146fcce`](https://github.com/gptme/gptme/commit/3e146fcce))
+ - feat(attestation): add ModelSelectionTrace for durable model provenance (Phase 0) ([#3416](https://github.com/gptme/gptme/issues/3416)) ([`1b4616ee0`](https://github.com/gptme/gptme/commit/1b4616ee0))
+ - feat(webui): add Tool Activity Panel to right sidebar ([#3413](https://github.com/gptme/gptme/issues/3413)) ([`a598f55d2`](https://github.com/gptme/gptme/commit/a598f55d2))
+ - feat(tutorial): add gptme-tutorial interactive onboarding mode ([#3420](https://github.com/gptme/gptme/issues/3420)) ([`c284f67e7`](https://github.com/gptme/gptme/commit/c284f67e7))
+ - feat(k-best): add k_best_guess decorator for K-candidate validation ([#3415](https://github.com/gptme/gptme/issues/3415)) ([`1ebdb1f92`](https://github.com/gptme/gptme/commit/1ebdb1f92))
+ - feat(webui): replace CLI server guidance with in-app retry in Tauri desktop app ([#3407](https://github.com/gptme/gptme/issues/3407)) ([`7fe250529`](https://github.com/gptme/gptme/commit/7fe250529))
+ - feat(cost): add inline per-message cost display via GPTME_SHOW_COST=1 ([#3396](https://github.com/gptme/gptme/issues/3396)) ([`2b7d77201`](https://github.com/gptme/gptme/commit/2b7d77201))
+ - feat(webui): virtualize message list with @tanstack/react-virtual ([#3379](https://github.com/gptme/gptme/issues/3379)) ([`ebbce08b9`](https://github.com/gptme/gptme/commit/ebbce08b9))
+ - feat(webui): add model3d artifact kind for glTF/GLB/OBJ/STL inline preview ([#3361](https://github.com/gptme/gptme/issues/3361)) ([`d315f82f3`](https://github.com/gptme/gptme/commit/d315f82f3))
+ - feat(llm): add native Kimi K3 support ([#3385](https://github.com/gptme/gptme/issues/3385)) ([`8b1a993a9`](https://github.com/gptme/gptme/commit/8b1a993a9))
+ - feat(logmanager): optional S3 replication for session event logs (Phase 2) ([#3382](https://github.com/gptme/gptme/issues/3382)) ([`97bc1dc22`](https://github.com/gptme/gptme/commit/97bc1dc22))
+ - feat(sandbox): add Wasmtime WASI Python sandbox backend ([#3381](https://github.com/gptme/gptme/issues/3381)) ([`3697f4526`](https://github.com/gptme/gptme/commit/3697f4526))
+ - feat(sandbox): add Docker sandbox for Python tool (GPTME_SANDBOX=docker) ([#3377](https://github.com/gptme/gptme/issues/3377)) ([`38f893b03`](https://github.com/gptme/gptme/commit/38f893b03))
+ - feat(sandbox): add sandboxed execution mode for shell tool ([#3367](https://github.com/gptme/gptme/issues/3367)) ([`89d4ecb9a`](https://github.com/gptme/gptme/commit/89d4ecb9a))
+ - feat(config): add layered lifecycle script hooks ([#3366](https://github.com/gptme/gptme/issues/3366)) ([`1531fd15d`](https://github.com/gptme/gptme/commit/1531fd15d))
+ - feat(tools): add completion verification hook ([#3358](https://github.com/gptme/gptme/issues/3358)) ([`12001f153`](https://github.com/gptme/gptme/commit/12001f153))
+ - feat(tui): collapsible rendering for XML and markdown tool-call formats ([#3353](https://github.com/gptme/gptme/issues/3353)) ([`78c191958`](https://github.com/gptme/gptme/commit/78c191958))
+ - feat(tui): prompt before fetching URLs pasted into TUI ([#3351](https://github.com/gptme/gptme/issues/3351)) ([`609d55a76`](https://github.com/gptme/gptme/commit/609d55a76))
+ - feat(tui): prefix-based history search + show Ctrl+J in input hint ([#3341](https://github.com/gptme/gptme/issues/3341)) ([`0faa850fc`](https://github.com/gptme/gptme/commit/0faa850fc))
+ - feat(tui): render thinking blocks as collapsibles, show Thinking… during generation ([#3336](https://github.com/gptme/gptme/issues/3336)) ([`58851384b`](https://github.com/gptme/gptme/commit/58851384b))
+ - feat(tui): tab-completion candidate overlay ([#3311](https://github.com/gptme/gptme/issues/3311)) ([#3316](https://github.com/gptme/gptme/issues/3316)) ([`48143206c`](https://github.com/gptme/gptme/commit/48143206c))
+ - feat(tui): tool-execution placeholder in chat + fix gray message background ([#3321](https://github.com/gptme/gptme/issues/3321)) ([`fe71f1294`](https://github.com/gptme/gptme/commit/fe71f1294))
+ - feat(tui): persist input history to shared prompt-toolkit history file ([#3314](https://github.com/gptme/gptme/issues/3314)) ([`1787ff47e`](https://github.com/gptme/gptme/commit/1787ff47e))
+ - feat(tui): add Alt+Left/Right word navigation to ChatInput ([#3313](https://github.com/gptme/gptme/issues/3313)) ([`b5c9edb11`](https://github.com/gptme/gptme/commit/b5c9edb11))
+ - feat(tui): add input history, fix focus and visual polish ([#3312](https://github.com/gptme/gptme/issues/3312)) ([`bb6afedd4`](https://github.com/gptme/gptme/commit/bb6afedd4))
+ - feat(tui): show 'Generating…' placeholder before first token arrives ([#3310](https://github.com/gptme/gptme/issues/3310)) ([`762fd3a67`](https://github.com/gptme/gptme/commit/762fd3a67))
+ - feat(webui): truly mix external sessions inline by recency ([#3217](https://github.com/gptme/gptme/issues/3217)) ([#3307](https://github.com/gptme/gptme/issues/3307)) ([`b9f4482e6`](https://github.com/gptme/gptme/commit/b9f4482e6))
+ - feat(webui): open external sessions inline in native chat layout ([#3306](https://github.com/gptme/gptme/issues/3306)) ([`42982c631`](https://github.com/gptme/gptme/commit/42982c631))
+ - feat(tui): add experimental jelly error feedback ([#3303](https://github.com/gptme/gptme/issues/3303)) ([`efd9942f4`](https://github.com/gptme/gptme/commit/efd9942f4))
+ - feat(auth): add OpenRouter OAuth and gptme.ai device-connect to first-run setup ([#3304](https://github.com/gptme/gptme/issues/3304)) ([`6ad8c372a`](https://github.com/gptme/gptme/commit/6ad8c372a))
+ - feat(webui): steer_inject for external sessions (Phase 2 of [#3217](https://github.com/gptme/gptme/issues/3217)) ([#3287](https://github.com/gptme/gptme/issues/3287)) ([`5591dd89b`](https://github.com/gptme/gptme/commit/5591dd89b))
+ - feat(cli): add full-noexamples system prompt type to reduce token usage ([#3296](https://github.com/gptme/gptme/issues/3296)) ([`f207bbf4d`](https://github.com/gptme/gptme/commit/f207bbf4d))
+ - feat(cli): offer subscription auth on first run ([#3295](https://github.com/gptme/gptme/issues/3295)) ([`8d55746e1`](https://github.com/gptme/gptme/commit/8d55746e1))
+ - feat(hooks): hash-link manifest records with tamper-detection verification (Phase 2) ([#3297](https://github.com/gptme/gptme/issues/3297)) ([`50ceda783`](https://github.com/gptme/gptme/commit/50ceda783))
+ - feat(models): add pricing_type field for subscription-backed providers ([#3292](https://github.com/gptme/gptme/issues/3292)) ([`87944b080`](https://github.com/gptme/gptme/commit/87944b080))
+ - feat(providers): add grok-subscription provider for SuperGrok subscribers ([#3289](https://github.com/gptme/gptme/issues/3289)) ([`e0cd34093`](https://github.com/gptme/gptme/commit/e0cd34093))
+ - feat(subagent): mid-turn steer injection via STEP_PRE checkpoint ([#3290](https://github.com/gptme/gptme/issues/3290)) ([`a46b5600b`](https://github.com/gptme/gptme/commit/a46b5600b))
+ - feat(hooks): add --manifest-dir for tool-call attribution at JSON-record granularity ([#3291](https://github.com/gptme/gptme/issues/3291)) ([`b711a662a`](https://github.com/gptme/gptme/commit/b711a662a))
+ - feat(subagent): subagent_steer() — inject steering messages into running subagents ([#3206](https://github.com/gptme/gptme/issues/3206)) ([`070c45cee`](https://github.com/gptme/gptme/commit/070c45cee))
+ - feat(tools): make lxml optional with stdlib xml.etree fallback; move pypdf to optional ([#3280](https://github.com/gptme/gptme/issues/3280)) ([`1b55e04c2`](https://github.com/gptme/gptme/commit/1b55e04c2))
+ - feat(safety): add optional haiku judge annotation to export CLI ([#3276](https://github.com/gptme/gptme/issues/3276)) ([`61c2f68b5`](https://github.com/gptme/gptme/commit/61c2f68b5))
+ - feat(typecheck): add human-readable imprecision summary to typecheck-coverage ([#3272](https://github.com/gptme/gptme/issues/3272)) ([`9e3b5432e`](https://github.com/gptme/gptme/commit/9e3b5432e))
+ - feat(packaging): add gptme[minimal] install extra for ARM/musl/Termux/Lambda ([#3279](https://github.com/gptme/gptme/issues/3279)) ([`4cb2bfd37`](https://github.com/gptme/gptme/commit/4cb2bfd37))
+ - feat(webui): toggleable external sessions in conversation list ([#3281](https://github.com/gptme/gptme/issues/3281)) ([`1dc648dd1`](https://github.com/gptme/gptme/commit/1dc648dd1))
+
+### 🐛 Fixes (91)
+<details><summary>Click to expand</summary>
+<p>
+
+ - fix(review): verify finding file/line target matches inline comment location ([#3547](https://github.com/gptme/gptme/issues/3547)) ([`dc0109123`](https://github.com/gptme/gptme/commit/dc0109123))
+ - fix(tauri): real API-key errors and Windows sidecar startup ([#3552](https://github.com/gptme/gptme/issues/3552)) ([`3f4127cd1`](https://github.com/gptme/gptme/commit/3f4127cd1))
+ - fix(server): validate provider API key before persisting in BYOK setup ([#3555](https://github.com/gptme/gptme/issues/3555)) ([`33ce4182e`](https://github.com/gptme/gptme/commit/33ce4182e))
+ - fix(grok-subscription): enable native tools API and add grok-4.6 ([#3571](https://github.com/gptme/gptme/issues/3571)) ([`5fdcd47b9`](https://github.com/gptme/gptme/commit/5fdcd47b9))
+ - fix(shell): allowlist permitted flags per binary instead of denying four find flags (GHSA-mfh4-cxj2-jc9p) ([#3557](https://github.com/gptme/gptme/issues/3557)) ([`46806b849`](https://github.com/gptme/gptme/commit/46806b849))
+ - fix(deps): bump Python critical security dependencies ([#3556](https://github.com/gptme/gptme/issues/3556)) ([`c2d1ca9cb`](https://github.com/gptme/gptme/commit/c2d1ca9cb))
+ - fix(server): validate provider API key before saving it ([#3546](https://github.com/gptme/gptme/issues/3546)) ([`2ac432ef0`](https://github.com/gptme/gptme/commit/2ac432ef0))
+ - fix(android): enable mobile cloud sign-in ([#3558](https://github.com/gptme/gptme/issues/3558)) ([`fef66b7f4`](https://github.com/gptme/gptme/commit/fef66b7f4))
+ - fix(cli): rethink --version output format, remove --version-short ([#3539](https://github.com/gptme/gptme/issues/3539)) ([`49b4cf3aa`](https://github.com/gptme/gptme/commit/49b4cf3aa))
+ - fix(dirs): terminate project-dir walk at the filesystem root (Windows infinite loop) ([#3509](https://github.com/gptme/gptme/issues/3509)) ([`0c34ffc2a`](https://github.com/gptme/gptme/commit/0c34ffc2a))
+ - fix(llm): normalize proxy URL in _is_proxy() to match init() suffix rule ([#3527](https://github.com/gptme/gptme/issues/3527)) ([`6971a105a`](https://github.com/gptme/gptme/commit/6971a105a))
+ - fix(constants): escape assistant display name to prevent rich markup injection ([#3517](https://github.com/gptme/gptme/issues/3517)) ([`3ff8966d1`](https://github.com/gptme/gptme/commit/3ff8966d1))
+ - fix(read): reject non-positive line bounds instead of silently truncating ([#3515](https://github.com/gptme/gptme/issues/3515)) ([`902ab1b5b`](https://github.com/gptme/gptme/commit/902ab1b5b))
+ - fix(prompt_queue): preserve malformed lines on drain instead of dropping them ([#3498](https://github.com/gptme/gptme/issues/3498)) ([`e75f52e1c`](https://github.com/gptme/gptme/commit/e75f52e1c))
+ - fix(replay): read conversation.jsonl master log as explicit UTF-8 ([#3474](https://github.com/gptme/gptme/issues/3474)) ([`d62ae57d3`](https://github.com/gptme/gptme/commit/d62ae57d3))
+ - fix(review): stop discarding reviews whose findings quote a code fence ([#3513](https://github.com/gptme/gptme/issues/3513)) ([`d003ff2bc`](https://github.com/gptme/gptme/commit/d003ff2bc))
+ - fix(taskApi): include HTTP status code in all error messages ([#3516](https://github.com/gptme/gptme/issues/3516)) ([`cc4c2a15a`](https://github.com/gptme/gptme/commit/cc4c2a15a))
+ - fix: correct editable-install detection in `--version` output ([#3518](https://github.com/gptme/gptme/issues/3518)) ([#3519](https://github.com/gptme/gptme/issues/3519)) ([`1bdf21a70`](https://github.com/gptme/gptme/commit/1bdf21a70))
+ - fix(cli): preserve lone separator prompt ([#3514](https://github.com/gptme/gptme/issues/3514)) ([`b34ee9b2b`](https://github.com/gptme/gptme/commit/b34ee9b2b))
+ - fix(webui): keep hosted demo CTA clickable ([#3510](https://github.com/gptme/gptme/issues/3510)) ([`b4e47e634`](https://github.com/gptme/gptme/commit/b4e47e634))
+ - fix(message): disable Rich markup for plain rendering ([#3505](https://github.com/gptme/gptme/issues/3505)) ([`ee4bceba4`](https://github.com/gptme/gptme/commit/ee4bceba4))
+ - fix(codeblock): slice body on raw first-line length to avoid lang leaking into content ([#3507](https://github.com/gptme/gptme/issues/3507)) ([`ed08de11d`](https://github.com/gptme/gptme/commit/ed08de11d))
+ - fix(gh): only replace first /blob/ in transform_github_url ([#3473](https://github.com/gptme/gptme/issues/3473)) ([`7d7565f9d`](https://github.com/gptme/gptme/commit/7d7565f9d))
+ - fix(cli): split chained prompts only on exact separator args ([#3502](https://github.com/gptme/gptme/issues/3502)) ([`7182eaa76`](https://github.com/gptme/gptme/commit/7182eaa76))
+ - fix(server): preserve interrupt ownership across tool continuations ([#3457](https://github.com/gptme/gptme/issues/3457)) ([`4c10199a3`](https://github.com/gptme/gptme/commit/4c10199a3))
+ - fix(codeblock): normalize CRLF line endings when parsing code blocks ([#3499](https://github.com/gptme/gptme/issues/3499)) ([`dfafb54ea`](https://github.com/gptme/gptme/commit/dfafb54ea))
+ - fix(lessons): use correct max-z bound for population-SD BM25 z-scores ([#3500](https://github.com/gptme/gptme/issues/3500)) ([`393f7892f`](https://github.com/gptme/gptme/commit/393f7892f))
+ - fix(shell): close 4 auto-approval vulnerabilities in shell_validation ([#3495](https://github.com/gptme/gptme/issues/3495)) ([`73931882c`](https://github.com/gptme/gptme/commit/73931882c))
+ - fix(ci): download after-screenshots to /tmp to survive checkout workspace wipe ([#3496](https://github.com/gptme/gptme/issues/3496)) ([`44d14eec4`](https://github.com/gptme/gptme/commit/44d14eec4))
+ - fix(server): prevent premature continuation when confirming concurrent tools ([#3481](https://github.com/gptme/gptme/issues/3481)) ([`f9d369c53`](https://github.com/gptme/gptme/commit/f9d369c53))
+ - fix(read): reject inverted line range instead of silently returning empty ([#3494](https://github.com/gptme/gptme/issues/3494)) ([`aa64f7419`](https://github.com/gptme/gptme/commit/aa64f7419))
+ - fix(ci): use official download-artifact for cross-run artifacts + add more visual snapshots ([#3493](https://github.com/gptme/gptme/issues/3493)) ([`74237f2a4`](https://github.com/gptme/gptme/commit/74237f2a4))
+ - fix(gh): substitute owner/repo in per-job log-fetch fallback so run-view logs are reachable ([#3492](https://github.com/gptme/gptme/issues/3492)) ([`e461427a2`](https://github.com/gptme/gptme/commit/e461427a2))
+ - fix(llm): flatten array tool-result content for DeepSeek via OpenRouter ([#3490](https://github.com/gptme/gptme/issues/3490)) ([`dc7f854af`](https://github.com/gptme/gptme/commit/dc7f854af))
+ - fix(logmanager): use explicit UTF-8 for JSONL conversation I/O ([#3475](https://github.com/gptme/gptme/issues/3475)) ([`cd12e9e6a`](https://github.com/gptme/gptme/commit/cd12e9e6a))
+ - fix(deepseek): flatten text-only merged tool results to string ([#3472](https://github.com/gptme/gptme/issues/3472)) ([`a05fb85e2`](https://github.com/gptme/gptme/commit/a05fb85e2))
+ - fix(webui): expose Accept All as direct one-click button + compact tool cards ([#3440](https://github.com/gptme/gptme/issues/3440)) ([#3461](https://github.com/gptme/gptme/issues/3461)) ([`1f70107bd`](https://github.com/gptme/gptme/commit/1f70107bd))
+ - fix(complete): enable stuck detection for interactive/web sessions ([#3463](https://github.com/gptme/gptme/issues/3463)) ([`0c343ebd9`](https://github.com/gptme/gptme/commit/0c343ebd9))
+ - fix(deepseek): extract `<think>` reasoning into reasoning_content for deepseek-reasoner tool calls ([#3464](https://github.com/gptme/gptme/issues/3464)) ([`796f3d7cd`](https://github.com/gptme/gptme/commit/796f3d7cd))
+ - fix(webui): scroll past InlineToolExecution during tool execution ([#3440](https://github.com/gptme/gptme/issues/3440)) ([#3450](https://github.com/gptme/gptme/issues/3450)) ([`114117db1`](https://github.com/gptme/gptme/commit/114117db1))
+ - fix(lessons): port BM25 z-score gate to HybridLessonMatcher no-embedder path ([#3453](https://github.com/gptme/gptme/issues/3453)) ([`b73e2e476`](https://github.com/gptme/gptme/commit/b73e2e476))
+ - fix(webui): model selector skeleton while loading + dedupe spinners ([#3440](https://github.com/gptme/gptme/issues/3440)) ([#3441](https://github.com/gptme/gptme/issues/3441)) ([`360e11052`](https://github.com/gptme/gptme/commit/360e11052))
+ - fix(webui): remove workspaceUtils debug console.log spam, add useMemo to components ([#3446](https://github.com/gptme/gptme/issues/3446)) ([`d4f12a696`](https://github.com/gptme/gptme/commit/d4f12a696))
+ - fix(tests): catch TypeError in _has_flask() for Python 3.13 compatibility ([#3448](https://github.com/gptme/gptme/issues/3448)) ([`91c0e25dd`](https://github.com/gptme/gptme/commit/91c0e25dd))
+ - fix(tasks): align list-archived param name and include status code in errors ([#3447](https://github.com/gptme/gptme/issues/3447)) ([`4cba56d56`](https://github.com/gptme/gptme/commit/4cba56d56))
+ - fix(webui): keep setup wizard reachable after skip and on mobile Tauri ([#3445](https://github.com/gptme/gptme/issues/3445)) ([`f330be623`](https://github.com/gptme/gptme/commit/f330be623))
+ - fix(webui): make settings dialog full-screen on mobile, fixed-height on desktop ([#3444](https://github.com/gptme/gptme/issues/3444)) ([`2704a4f6b`](https://github.com/gptme/gptme/commit/2704a4f6b))
+ - fix(server): propagate branch through tool execution and continuation step ([#3432](https://github.com/gptme/gptme/issues/3432)) ([`6d5f493c7`](https://github.com/gptme/gptme/commit/6d5f493c7))
+ - fix(webui/a11y): raise green text to green-700 for WCAG AA compliance ([#3433](https://github.com/gptme/gptme/issues/3433)) ([`c6309447f`](https://github.com/gptme/gptme/commit/c6309447f))
+ - fix(security): require bearer auth for all bind addresses, remove is_local_host() bypass ([#3430](https://github.com/gptme/gptme/issues/3430)) ([`511365332`](https://github.com/gptme/gptme/commit/511365332))
+ - fix(server): complete cross-session generation guarding for conversations ([#3429](https://github.com/gptme/gptme/issues/3429)) ([`bd9bd781e`](https://github.com/gptme/gptme/commit/bd9bd781e))
+ - fix(webui/demo): use fixed historical timestamp instead of Date.now() ([#3431](https://github.com/gptme/gptme/issues/3431)) ([`6df6b7916`](https://github.com/gptme/gptme/commit/6df6b7916))
+ - fix(server): check all sessions when guarding concurrent generation in /step ([#3428](https://github.com/gptme/gptme/issues/3428)) ([`6d4c5dba1`](https://github.com/gptme/gptme/commit/6d4c5dba1))
+ - fix(android): pin AAB signer fingerprint instead of -strict chain check ([#3427](https://github.com/gptme/gptme/issues/3427)) ([`17e1c1189`](https://github.com/gptme/gptme/commit/17e1c1189))
+ - fix(android): print actual cert fingerprint on verification mismatch ([#3426](https://github.com/gptme/gptme/issues/3426)) ([`86cf21e4b`](https://github.com/gptme/gptme/commit/86cf21e4b))
+ - fix(config): use explicit UTF-8 encoding for all TOML config I/O ([#3399](https://github.com/gptme/gptme/issues/3399)) ([`f636ae4ac`](https://github.com/gptme/gptme/commit/f636ae4ac))
+ - fix(llm): buffer non-tool system msgs between tool_calls and tool responses ([#3422](https://github.com/gptme/gptme/issues/3422)) ([`09ce9b05d`](https://github.com/gptme/gptme/commit/09ce9b05d))
+ - fix(shell): fold workspace hint into tool response ([#3419](https://github.com/gptme/gptme/issues/3419)) ([`4c8066890`](https://github.com/gptme/gptme/commit/4c8066890))
+ - fix(server): acquire step_lock in interrupt endpoint to prevent race ([#3414](https://github.com/gptme/gptme/issues/3414)) ([`c5faab836`](https://github.com/gptme/gptme/commit/c5faab836))
+ - fix(server): reject message append during generation ([#3412](https://github.com/gptme/gptme/issues/3412)) ([`aaa96d6a6`](https://github.com/gptme/gptme/commit/aaa96d6a6))
+ - fix(server): guard conversation DELETE against concurrent generation ([#3405](https://github.com/gptme/gptme/issues/3405)) ([`2d40121ea`](https://github.com/gptme/gptme/commit/2d40121ea))
+ - fix(tauri): avoid duplicating webui in server sidecar ([#3404](https://github.com/gptme/gptme/issues/3404)) ([`b4e1871ff`](https://github.com/gptme/gptme/commit/b4e1871ff))
+ - fix(server): acquire step_lock when checking generating flag in fork/edit/delete/config ([#3401](https://github.com/gptme/gptme/issues/3401)) ([`982d2ef8c`](https://github.com/gptme/gptme/commit/982d2ef8c))
+ - fix(ci): bundle webui before building Tauri sidecars ([#3403](https://github.com/gptme/gptme/issues/3403)) ([`26ba55254`](https://github.com/gptme/gptme/commit/26ba55254))
+ - fix(webui): a few minor design trims/fixes, including hiding avatars in chat on small screens ([#3395](https://github.com/gptme/gptme/issues/3395)) ([`a8f8509b1`](https://github.com/gptme/gptme/commit/a8f8509b1))
+ - fix(server): actually bundle modern webui in distributions ([#3387](https://github.com/gptme/gptme/issues/3387)) ([`30852e8e2`](https://github.com/gptme/gptme/commit/30852e8e2))
+ - fix(sandbox): drop all Linux capabilities in Docker Python sandbox ([#3380](https://github.com/gptme/gptme/issues/3380)) ([`a534d8d20`](https://github.com/gptme/gptme/commit/a534d8d20))
+ - fix(logmanager): enforce call_id atomicity in limit_log for Responses API ([#3359](https://github.com/gptme/gptme/issues/3359)) ([`6b91235d3`](https://github.com/gptme/gptme/commit/6b91235d3))
+ - fix(tools): don't stamp call_id on hook messages (fixes Responses API 400) ([#3355](https://github.com/gptme/gptme/issues/3355)) ([`8c8f4afae`](https://github.com/gptme/gptme/commit/8c8f4afae))
+ - fix(tui): update tool format on /model switch, pretty-render tool-format calls ([#3347](https://github.com/gptme/gptme/issues/3347)) ([`38a311d14`](https://github.com/gptme/gptme/commit/38a311d14))
+ - fix(subscription): close streaming response on all exit paths to prevent SIGSEGV ([#3352](https://github.com/gptme/gptme/issues/3352)) ([`efd812233`](https://github.com/gptme/gptme/commit/efd812233))
+ - fix(tui): prevent crash when pasting GitHub URL ([#3348](https://github.com/gptme/gptme/issues/3348)) ([`0a310054c`](https://github.com/gptme/gptme/commit/0a310054c))
+ - fix(gh): keep the ref intact when turning a blob URL into a raw URL ([#3342](https://github.com/gptme/gptme/issues/3342)) ([`1e0ce256f`](https://github.com/gptme/gptme/commit/1e0ce256f))
+ - fix: improve tui styling ([#3340](https://github.com/gptme/gptme/issues/3340)) ([`65edd236e`](https://github.com/gptme/gptme/commit/65edd236e))
+ - fix(tui): use terminal-native background for active output ([#3334](https://github.com/gptme/gptme/issues/3334)) ([`26e85570d`](https://github.com/gptme/gptme/commit/26e85570d))
+ - fix(webui): persistent disconnected banner in conversation view ([#3327](https://github.com/gptme/gptme/issues/3327)) ([`41591361d`](https://github.com/gptme/gptme/commit/41591361d))
+ - fix(webui): strip thinking blocks from TTS output ([#3332](https://github.com/gptme/gptme/issues/3332)) ([`1d31b9821`](https://github.com/gptme/gptme/commit/1d31b9821))
+ - fix(test): kill TestMaxTimeWatchdog xdist flake — prevent untracked threads ([#3331](https://github.com/gptme/gptme/issues/3331)) ([`304631e4a`](https://github.com/gptme/gptme/commit/304631e4a))
+ - fix(webui): omit default dot-workspace so server applies its @log default ([#3329](https://github.com/gptme/gptme/issues/3329)) ([`8feb442f2`](https://github.com/gptme/gptme/commit/8feb442f2))
+ - fix(server): validate Host header to block DNS-rebinding on unauthenticated local servers ([#3324](https://github.com/gptme/gptme/issues/3324)) ([`34b0a33f0`](https://github.com/gptme/gptme/commit/34b0a33f0))
+ - fix(server): allow explicit workspace override when creating conversations ([#3319](https://github.com/gptme/gptme/issues/3319)) ([`711fb826d`](https://github.com/gptme/gptme/commit/711fb826d))
+ - fix(server,webui): external sessions dedup, stable detail IDs, admin nav label ([#3325](https://github.com/gptme/gptme/issues/3325)) ([`8fa8315b2`](https://github.com/gptme/gptme/commit/8fa8315b2))
+ - fix(test): use scrollback capture for inline-mode positional assertion ([#3305](https://github.com/gptme/gptme/issues/3305)) ([`b6db634ba`](https://github.com/gptme/gptme/commit/b6db634ba))
+ - fix(test): wait for input prompt before asserting scrollback order in inline test ([#3301](https://github.com/gptme/gptme/issues/3301)) ([`b86d50a8d`](https://github.com/gptme/gptme/commit/b86d50a8d))
+ - fix(acp): use max_turn_requests stop_reason when GPTME_MAX_STEPS reached ([#3302](https://github.com/gptme/gptme/issues/3302)) ([`2dec6bae4`](https://github.com/gptme/gptme/commit/2dec6bae4))
+ - fix(webui): expose server URL validation inline ([#3299](https://github.com/gptme/gptme/issues/3299)) ([`063b5fec0`](https://github.com/gptme/gptme/commit/063b5fec0))
+ - fix(acp): complete tool-driven prompt turns ([#3300](https://github.com/gptme/gptme/issues/3300)) ([`a3b121260`](https://github.com/gptme/gptme/commit/a3b121260))
+ - fix(logmanager): preserve tool call/result atomicity in prune_ephemeral_messages ([#3294](https://github.com/gptme/gptme/issues/3294)) ([`caabde264`](https://github.com/gptme/gptme/commit/caabde264))
+ - fix(webui): tolerate legacy provider health responses ([#3298](https://github.com/gptme/gptme/issues/3298)) ([`3fd84ba52`](https://github.com/gptme/gptme/commit/3fd84ba52))
+ - fix(models): update stale OpenRouter model IDs ([#3288](https://github.com/gptme/gptme/issues/3288)) ([`dada86411`](https://github.com/gptme/gptme/commit/dada86411))
+ - fix(tauri): make AppImage GTK links idempotent ([#3277](https://github.com/gptme/gptme/issues/3277)) ([`f658a411c`](https://github.com/gptme/gptme/commit/f658a411c))
+
+</p>
+</details>
+
+### 🔨 Misc (42)
+<details><summary>Click to expand</summary>
+<p>
+
+ - chore: bump version to 0.33.0 ([`b0f9e1199`](https://github.com/gptme/gptme/commit/b0f9e1199))
+ - docs(models): cite the grok-4.6 model card ([#3572](https://github.com/gptme/gptme/issues/3572)) ([`6fd94609c`](https://github.com/gptme/gptme/commit/6fd94609c))
+ - refactor(tests): move hashline snapshot test out of test_tools_read.py ([#3564](https://github.com/gptme/gptme/issues/3564)) ([`0a27a4539`](https://github.com/gptme/gptme/commit/0a27a4539))
+ - docs: fix providers.rst structure, nest provider/browser pages, add Tool Formats guide ([#3563](https://github.com/gptme/gptme/issues/3563)) ([`9062f906d`](https://github.com/gptme/gptme/commit/9062f906d))
+ - refactor(tools/read): fully decouple read.py from _hashline_snapshot ([#3562](https://github.com/gptme/gptme/issues/3562)) ([`469e7fe16`](https://github.com/gptme/gptme/commit/469e7fe16))
+ - refactor(cli): move Bob-specific status fields out of core; add StatusProvider extension point ([#3537](https://github.com/gptme/gptme/issues/3537)) ([`f2438a449`](https://github.com/gptme/gptme/commit/f2438a449))
+ - docs(design): complete PTC audit — paper citation + full tools/ coverage ([#3554](https://github.com/gptme/gptme/issues/3554)) ([`3d0005fd9`](https://github.com/gptme/gptme/commit/3d0005fd9))
+ - docs: reordered sections in providers.rst ([`6e3529153`](https://github.com/gptme/gptme/commit/6e3529153))
+ - refactor(tools/read): decouple read tool examples from hashline conventions ([#3561](https://github.com/gptme/gptme/issues/3561)) ([`e8fcfa2fe`](https://github.com/gptme/gptme/commit/e8fcfa2fe))
+ - docs(tools): document hashline_edit tool + fix read examples with tag header ([#3476](https://github.com/gptme/gptme/issues/3476)) ([#3532](https://github.com/gptme/gptme/issues/3532)) ([`369eaac92`](https://github.com/gptme/gptme/commit/369eaac92))
+ - docs: PTC tool interface audit + architecture rationale (fixes [#3540](https://github.com/gptme/gptme/issues/3540)) ([#3541](https://github.com/gptme/gptme/issues/3541)) ([`66057c6e8`](https://github.com/gptme/gptme/commit/66057c6e8))
+ - docs: clarify conversation, branch, fork, and session terminology ([#3544](https://github.com/gptme/gptme/issues/3544)) ([`85ac622e8`](https://github.com/gptme/gptme/commit/85ac622e8))
+ - test(webui): server-backed E2E generation tests with mock/echo provider ([#3440](https://github.com/gptme/gptme/issues/3440)) ([#3468](https://github.com/gptme/gptme/issues/3468)) ([`79bfe0def`](https://github.com/gptme/gptme/commit/79bfe0def))
+ - docs(review): cross-reference the three PR-review implementations ([#3511](https://github.com/gptme/gptme/issues/3511)) ([`ced7357ce`](https://github.com/gptme/gptme/commit/ced7357ce))
+ - refactor(review): extract infer_owner_repo into shared gptme.util.gh module ([#3503](https://github.com/gptme/gptme/issues/3503)) ([`2a84b1858`](https://github.com/gptme/gptme/commit/2a84b1858))
+ - test(review): fix brittle live-PR unresolved assertion + add mocked coverage (gptme[#3442](https://github.com/gptme/gptme/issues/3442)) ([#3501](https://github.com/gptme/gptme/issues/3501)) ([`0cd374a2b`](https://github.com/gptme/gptme/commit/0cd374a2b))
+ - test(review-watch): stop a global time.monotonic patch from crashing other tests ([#3489](https://github.com/gptme/gptme/issues/3489)) ([`900727b19`](https://github.com/gptme/gptme/commit/900727b19))
+ - test: thread-leak detector + dict-race thread dump (residue of [#3257](https://github.com/gptme/gptme/issues/3257)) ([#3458](https://github.com/gptme/gptme/issues/3458)) ([`2f8966884`](https://github.com/gptme/gptme/commit/2f8966884))
+ - docs(cookbook): add cookbook with 5 canonical usage patterns ([#3398](https://github.com/gptme/gptme/issues/3398)) ([`d83a093a2`](https://github.com/gptme/gptme/commit/d83a093a2))
+ - docs(readme): update desktop app from WIP to shipped with download link ([#3397](https://github.com/gptme/gptme/issues/3397)) ([`74ccbb225`](https://github.com/gptme/gptme/commit/74ccbb225))
+ - docs(automation): add review-gated autonomous workflow section ([#3391](https://github.com/gptme/gptme/issues/3391)) ([`3c1a26807`](https://github.com/gptme/gptme/commit/3c1a26807))
+ - docs: add task-to-workflow onboarding guide ([#3389](https://github.com/gptme/gptme/issues/3389)) ([`49583dd01`](https://github.com/gptme/gptme/commit/49583dd01))
+ - test(webui): add virtualization regression tests for [#3379](https://github.com/gptme/gptme/issues/3379) ([`0c3a4add1`](https://github.com/gptme/gptme/commit/0c3a4add1))
+ - revert(logmanager): remove speculative S3 event-log replication ([#3384](https://github.com/gptme/gptme/issues/3384)) ([`1362061c2`](https://github.com/gptme/gptme/commit/1362061c2))
+ - test(webui): guard streaming performance fixes ([#3362](https://github.com/gptme/gptme/issues/3362)) ([#3375](https://github.com/gptme/gptme/issues/3375)) ([`4b0a88ff1`](https://github.com/gptme/gptme/commit/4b0a88ff1))
+ - perf(webui): skip buildStepRoles recompute on every streaming token ([#3370](https://github.com/gptme/gptme/issues/3370)) ([`bba854aad`](https://github.com/gptme/gptme/commit/bba854aad))
+ - perf(webui): use Record instead of Map for stepRoles$ to enable per-row reactivity ([#3371](https://github.com/gptme/gptme/issues/3371)) ([`530d6ac09`](https://github.com/gptme/gptme/commit/530d6ac09))
+ - perf(webui): remove debug console.log spam from useConversation ([#3369](https://github.com/gptme/gptme/issues/3369)) ([`c00fce620`](https://github.com/gptme/gptme/commit/c00fce620))
+ - perf(webui): fix O(n²) DOM writes during streaming code blocks ([#3368](https://github.com/gptme/gptme/issues/3368)) ([`93c77e29b`](https://github.com/gptme/gptme/commit/93c77e29b))
+ - docs: add contributor-facing PR lifecycle guide ([#3365](https://github.com/gptme/gptme/issues/3365)) ([`de9e1beaf`](https://github.com/gptme/gptme/commit/de9e1beaf))
+ - perf(webui): skip hljs.highlightAuto for gptme tool-output tags ([#3364](https://github.com/gptme/gptme/issues/3364)) ([`57b2ce0e2`](https://github.com/gptme/gptme/commit/57b2ce0e2))
+ - perf(webui): fix O(n²) syntax highlighting and scroll thrash during generation ([#3363](https://github.com/gptme/gptme/issues/3363)) ([`442882760`](https://github.com/gptme/gptme/commit/442882760))
+ - docs(providers): add LM Studio section and tool-use verification tip ([#3357](https://github.com/gptme/gptme/issues/3357)) ([`b66e24c00`](https://github.com/gptme/gptme/commit/b66e24c00))
+ - test(acp): add end-to-end smoke test for ACP agent ([#3356](https://github.com/gptme/gptme/issues/3356)) ([`6b9f7db70`](https://github.com/gptme/gptme/commit/6b9f7db70))
+ - docs(providers): add provider integration guide + test scaffold ([#3354](https://github.com/gptme/gptme/issues/3354)) ([`fdd0631b0`](https://github.com/gptme/gptme/commit/fdd0631b0))
+ - test(tui): guard against italic text-style regression ([#3340](https://github.com/gptme/gptme/issues/3340)) ([#3344](https://github.com/gptme/gptme/issues/3344)) ([`e6952436f`](https://github.com/gptme/gptme/commit/e6952436f))
+ - test(tui): activate gray-background regression guards now that [#3334](https://github.com/gptme/gptme/issues/3334) is merged ([#3339](https://github.com/gptme/gptme/issues/3339)) ([`714035fbb`](https://github.com/gptme/gptme/commit/714035fbb))
+ - test(tui): add SVG visual regression tests for TUI rendering ([#3338](https://github.com/gptme/gptme/issues/3338)) ([`f4332b337`](https://github.com/gptme/gptme/commit/f4332b337))
+ - docs(server): add Security section — threat model, auth model, and workspace PATCH semantics ([#3333](https://github.com/gptme/gptme/issues/3333)) ([`a314438ad`](https://github.com/gptme/gptme/commit/a314438ad))
+ - test(server): regression test for generation_complete ordering (refs [#3315](https://github.com/gptme/gptme/issues/3315)) ([#3323](https://github.com/gptme/gptme/issues/3323)) ([`20cb45f58`](https://github.com/gptme/gptme/commit/20cb45f58))
+ - test(webui): add ExternalSessionDetail unit tests (steer_inject path) ([#3308](https://github.com/gptme/gptme/issues/3308)) ([`a5b65b12a`](https://github.com/gptme/gptme/commit/a5b65b12a))
+ - experiment(computer): semantic verification contract prototype ([#3275](https://github.com/gptme/gptme/issues/3275)) ([`a1d8ca21d`](https://github.com/gptme/gptme/commit/a1d8ca21d))
+
+</p>
+</details>
+
+*(excluded 11 less relevant [commits](https://github.com/gptme/gptme/compare/v0.32.1...v0.33.0))*
+
+**Full Changelog**: https://github.com/gptme/gptme/compare/v0.32.1...v0.33.0
 
 
 # v0.32.1
@@ -12774,6 +15548,7 @@ Changes since v0.32.0:
 *(excluded 4 less relevant [commits](https://github.com/gptme/gptme/compare/v0.32.0...v0.32.1))*
 
 **Full Changelog**: https://github.com/gptme/gptme/compare/v0.32.0...v0.32.1
+
 
 # v0.32.0
 

@@ -170,7 +170,9 @@
 <li class="toctree-l2"><a class="reference internal" href="projects.html">Projects</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1"><a class="reference internal" href="cookbook.html">Cookbook</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="howto/index.html">How-To Guides</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="howto/choose-workflow.html">Choose a workflow for your task</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/minimal-context.html">Run gptme with minimal context</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/edit-files.html">How to Edit Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="howto/code-review.html">How to Review Code</a></li>
@@ -181,16 +183,19 @@
 <li class="toctree-l2"><a class="reference internal" href="howto/tts-setup.html">Set Up Text-to-Speech</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="tools.html">Tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="browser.html">Browser Tool</a></li>
+</ul>
+</details></li>
 <li class="toctree-l1"><a class="reference internal" href="commands.html">Commands</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cli.html">CLI Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="tui.html">TUI</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Configuration</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="providers.html">Providers</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tool-formats.html">Tool Formats</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="providers-custom.html">Custom and Local Providers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="provider-integration.html">Provider Integration Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="model-routing.html">Choosing your model</a></li>
 <li class="toctree-l1"><a class="reference internal" href="security.html">Security Considerations</a></li>
@@ -208,7 +213,10 @@
 <li class="toctree-l1"><a class="reference internal" href="mcp.html">MCP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="acp.html">ACP (Agent Client Protocol)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="lessons.html">Lessons</a></li>
-<li class="toctree-l1"><a class="reference internal" href="skills.html">Skills</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="skills.html">Skills</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="skills-gallery.html">Skills Gallery</a></li>
+</ul>
+</details></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Developer Guide</span></p>
 <ul class="nav bd-sidenav">
@@ -218,6 +226,7 @@
 <li class="toctree-l1"><a class="reference internal" href="custom_tool.html">Custom Tools</a></li>
 <li class="toctree-l1"><a class="reference internal" href="hooks.html">Hooks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="plugins.html">Plugin System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context-compression.html">Context Compression</a></li>
 <li class="toctree-l1"><a class="reference internal" href="prompts.html">Prompts</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a></li>
 <li class="toctree-l1"><a class="reference internal" href="evals.html">Evals</a></li>
@@ -228,6 +237,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="design/hook-based-confirmations.html">Design: Hook-Based Tool Confirmations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="design/elicitation.html">Design: Generalized Elicitation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="design/ptc-tool-interface.html">Design: Programmatic Tool Calling (PTC) Interface</a></li>
 </ul>
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">About</span></p>
 <ul class="nav bd-sidenav">
@@ -236,6 +246,7 @@
 <li class="toctree-l1"><a class="reference internal" href="misc/acronyms.html">What does “gptme” stand for?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="timeline.html">Timeline</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="changelog.html">Changelog</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="releases/v0.33.0.html">v0.33.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.1.html">v0.32.1</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.32.0.html">v0.32.0</a></li>
 <li class="toctree-l2"><a class="reference internal" href="releases/v0.31.0.html">v0.31.0</a></li>
@@ -572,7 +583,7 @@ document.write(`
 <span class="c1">#OPENAI_BASE_URL = &quot;http://localhost:11434/v1&quot;</span>
 
 <span class="c1"># Uncomment to change tool configuration</span>
-<span class="c1">#TOOL_FORMAT = &quot;markdown&quot; # Select the tool formal. One of `markdown`, `xml`, `tool`</span>
+<span class="c1">#TOOL_FORMAT = &quot;markdown&quot; # Select the tool format. One of `markdown`, `xml`, `tool` (see docs: Tool Formats)</span>
 <span class="c1">#TOOL_ALLOWLIST = &quot;save,append,patch,ipython,shell,browser&quot;  # Comma separated list of allowed tools</span>
 <span class="c1">#TOOL_MODULES = &quot;gptme.tools,custom.tools&quot; # List of python comma separated python module path</span>
 
@@ -819,6 +830,9 @@ It is used to store the model, toolset, tool format, and streaming/interactive m
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_CHECK</span></code> - Enable <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> checks (default: true if <code class="docutils literal notranslate"><span class="pre">.pre-commit-config.yaml</span></code> present, see <a class="reference internal" href="usage.html#pre-commit"><span class="std std-ref">Pre-commit Integration</span></a>)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_CHAT_HISTORY</span></code> - Enable cross-conversation context (default: false)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_COSTS</span></code> - Enable cost reporting for API calls (default: false)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GPTME_SESSION_BUDGET_USD</span></code> - Optional per-session cost budget in USD. When set, gptme warns once the current session crosses <code class="docutils literal notranslate"><span class="pre">GPTME_BUDGET_WARN_PCT</span></code> of the budget.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GPTME_SESSION_BUDGET_TOKENS</span></code> - Optional per-session token budget. Counts input, output, cache-read, and cache-creation tokens.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GPTME_BUDGET_WARN_PCT</span></code> - Percentage of the configured session budget that triggers the warning (default: 80).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_FRESH</span></code> - Enable fresh context mode (default: false)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_BREAK_ON_TOOLUSE</span></code> - Interrupt generation when tool use occurs in stream. Default is model-dependent: <code class="docutils literal notranslate"><span class="pre">false</span></code> for capable models that support parallel tool calls (e.g. claude-sonnet-4-6, gpt-4o), <code class="docutils literal notranslate"><span class="pre">true</span></code> for others. Set to <code class="docutils literal notranslate"><span class="pre">0</span></code> to force parallel tool calls, <code class="docutils literal notranslate"><span class="pre">1</span></code> to force single tool call per response (equivalent to <code class="docutils literal notranslate"><span class="pre">--multi-tool</span></code> flag).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_PATCH_RECOVERY</span></code> - Return file content in error for non-matching patches (default: false)</p></li>
@@ -827,6 +841,7 @@ It is used to store the model, toolset, tool format, and streaming/interactive m
 <p class="rubric">API Configuration</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">LLM_API_TIMEOUT</span></code> - Set the timeout in seconds for LLM API requests (default: 600). Must be a valid numeric string (e.g., “600”, “1800”). Useful for local LLMs that may take longer to respond.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GPTME_LLM_MAX_RETRIES</span></code> - Number of attempts (including the first) for a failing LLM request (default: 11). Retries use exponential backoff capped at 60s per wait, giving a ~5 minute window so a brief upstream rate-limit or outage does not end a long session. Provider SDK-level retries are disabled so this is the only retry loop.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_ANTHROPIC_FAST_MODE</span></code> - Enable Anthropic fast mode for the Anthropic provider (default: false). When enabled, requests set <code class="docutils literal notranslate"><span class="pre">speed:</span> <span class="pre">&quot;fast&quot;</span></code> for up to ~2.5x higher output tokens/sec at premium pricing — a research preview available on Claude Opus 4.8+. Requires an org with fast-mode access; otherwise the API returns an error. Off by default, so it never affects standard usage. Useful for latency-sensitive callers (e.g. gptme-voice).</p></li>
 </ul>
 <p class="rubric">Browser Configuration</p>
@@ -844,7 +859,7 @@ The variable name is derived from the parameter name in uppercase.</p>
 <p>Common examples:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_MODEL</span></code> - Set the model (equivalent to <code class="docutils literal notranslate"><span class="pre">--model</span></code>)</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GPTME_TOOL_FORMAT</span></code> - Set the tool format (equivalent to <code class="docutils literal notranslate"><span class="pre">--tool-format</span></code>)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GPTME_TOOL_FORMAT</span></code> - Set the tool format (equivalent to <code class="docutils literal notranslate"><span class="pre">--tool-format</span></code>), see <a class="reference internal" href="tool-formats.html"><span class="doc">Tool Formats</span></a></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_WORKSPACE</span></code> - Set the workspace (equivalent to <code class="docutils literal notranslate"><span class="pre">--workspace</span></code>)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GPTME_TOOL_ALLOWLIST</span></code> - Set allowed tools (equivalent to <code class="docutils literal notranslate"><span class="pre">--tools</span></code>)</p></li>
 </ul>
